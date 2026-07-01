@@ -1,0 +1,83 @@
+{
+  "_comment": "Canonical category list. Kept in sync manually with n8n/prompts/gemini-text-extraction.md and the Kategori dropdown built by apps-script/00-bootstrap-provision.gs. See docs/03-category-sumber-dana-config.md before editing.",
+  "categories": [
+    {
+      "id": "makan_minum",
+      "label": "Makan & Minum",
+      "subkategori": ["Sarapan", "Makan Siang", "Makan Malam", "Jajan", "Kopi/Kafe"],
+      "keywords": ["makan", "minum", "jajan", "resto", "warteg", "gofood", "grabfood", "cafe", "kafe"]
+    },
+    {
+      "id": "transportasi",
+      "label": "Transportasi",
+      "subkategori": ["Bensin", "Servis Motor", "Parkir", "Ojek Online", "Tol"],
+      "keywords": ["bensin", "parkir", "gojek", "grab", "ojol", "servis motor", "tol", "pertamax"]
+    },
+    {
+      "id": "kos_tempat_tinggal",
+      "label": "Kos/Tempat Tinggal",
+      "subkategori": ["Sewa Kos", "Listrik", "Air", "Wifi/Internet"],
+      "keywords": ["kos", "kontrakan", "listrik", "wifi", "indihome", "token listrik"]
+    },
+    {
+      "id": "kuliah_akademik",
+      "label": "Kuliah/Akademik",
+      "subkategori": ["SPP", "Buku", "Fotokopi/Print", "Alat Tulis"],
+      "keywords": ["kuliah", "kampus", "spp", "print", "fotokopi", "skripsi", "buku"]
+    },
+    {
+      "id": "produksi_event",
+      "label": "Produksi/Event",
+      "subkategori": ["Sewa Alat", "Freelance", "Transport Job", "Konsumsi Crew"],
+      "keywords": ["job", "freelance", "produksi", "event", "shoot", "rog"]
+    },
+    {
+      "id": "peralatan",
+      "label": "Peralatan",
+      "subkategori": ["Kamera", "PC/Laptop", "Gear/Aksesoris"],
+      "keywords": ["kamera", "lensa", "laptop", "pc", "gear", "aksesoris", "part komputer"]
+    },
+    {
+      "id": "hiburan_hobi",
+      "label": "Hiburan/Hobi",
+      "subkategori": ["Gaming", "Gitar/Musik", "Nonton", "Langganan Streaming"],
+      "keywords": ["valorant", "steam", "gaming", "gitar", "netflix", "spotify", "nonton", "bioskop"]
+    },
+    {
+      "id": "kopi_espresso_setup",
+      "label": "Kopi/Espresso Setup",
+      "subkategori": ["Biji Kopi", "Alat Seduh", "Maintenance Mesin"],
+      "keywords": ["kopi", "espresso", "biji kopi", "grinder", "portafilter", "v60"]
+    },
+    {
+      "id": "kesehatan",
+      "label": "Kesehatan",
+      "subkategori": ["Obat", "Dokter", "Vitamin", "BPJS/Asuransi"],
+      "keywords": ["obat", "dokter", "klinik", "vitamin", "bpjs", "apotek"]
+    },
+    {
+      "id": "belanja_pribadi",
+      "label": "Belanja Pribadi",
+      "subkategori": ["Pakaian", "Perawatan Diri", "Kebutuhan Harian"],
+      "keywords": ["baju", "skincare", "belanja", "shopee", "tokopedia", "sabun", "shampo"]
+    },
+    {
+      "id": "transfer_pinjam",
+      "label": "Transfer/Pinjam",
+      "subkategori": ["Kirim ke Teman", "Bayar Utang", "Pinjam"],
+      "keywords": ["transfer", "pinjam", "utang", "bayar teman", "patungan"]
+    },
+    {
+      "id": "tabungan_investasi",
+      "label": "Tabungan/Investasi",
+      "subkategori": ["Tabungan", "Reksadana", "Saham", "Emas"],
+      "keywords": ["nabung", "tabungan", "investasi", "reksadana", "saham", "emas"]
+    },
+    {
+      "id": "lain_lain",
+      "label": "Lain-lain",
+      "subkategori": [],
+      "keywords": []
+    }
+  ]
+}

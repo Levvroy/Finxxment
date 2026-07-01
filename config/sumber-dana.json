@@ -1,0 +1,11 @@
+{
+  "_comment": "Canonical sumber dana (payment source) list. Kept in sync manually with n8n/prompts/gemini-text-extraction.md and the Sumber Dana dropdown in apps-script/00-bootstrap-provision.gs. See docs/03-category-sumber-dana-config.md before editing.",
+  "sumber_dana": [
+    { "id": "cash", "label": "Cash", "aliases": ["tunai", "cash", "dompet"] },
+    { "id": "qris", "label": "QRIS", "aliases": ["qris", "scan qr", "qr code"] },
+    { "id": "debit", "label": "Debit", "aliases": ["debit", "kartu debit", "atm"] },
+    { "id": "e_wallet", "label": "E-wallet", "aliases": ["gopay", "ovo", "dana", "shopeepay", "linkaja", "e-wallet"] },
+    { "id": "transfer_bank", "label": "Transfer Bank", "aliases": ["transfer", "tf", "m-banking", "mobile banking"] },
+    { "id": "kredit", "label": "Kredit", "aliases": ["kredit", "kartu kredit", "cc", "paylater"] }
+  ]
+}

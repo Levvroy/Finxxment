@@ -1,0 +1,156 @@
+{
+  "name": "Finxxment - 04 Export XLSX Berkala",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyMonth",
+              "dayOfMonth": 1,
+              "hour": 7,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "2fa59441-e6f5-44c6-aa14-3624d8d5e906",
+      "name": "Cron: Monthly Export",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0392c42f-1d8d-401c-b007-04ed730b3b41",
+              "name": "SPREADSHEET_ID",
+              "value": "REPLACE_ME_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "8b2a0e71-a909-422b-9fe5-a5a1485fce35",
+              "name": "OWNER_CHAT_ID",
+              "value": "REPLACE_ME_OWNER_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "aba47102-ba4d-490c-afab-d1661a380cec",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        250,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+          }
+        }
+      },
+      "id": "ffa2e2e2-49fb-4916-ab87-f2623f5d95e8",
+      "name": "Google Drive: Export XLSX",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        500,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Drive"
+        }
+      },
+      "notes": "Google Drive's file-download endpoint with export mimeType converts the Sheet to .xlsx binary."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "operation": "sendDocument",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "📎 Export bulanan finxxment (.xlsx)"
+        }
+      },
+      "id": "c3cd1741-ce5a-441c-bac8-386b1e28014d",
+      "name": "Telegram: Send XLSX Document",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        750,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron: Monthly Export": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Export XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Export XLSX": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send XLSX Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "finxxment-04-export-xlsx-berkala",
+  "tags": []
+}

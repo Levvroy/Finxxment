@@ -1,0 +1,929 @@
+{
+  "name": "Finxxment - 02 Clarification Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "chatId"
+            },
+            {
+              "name": "incomingText"
+            },
+            {
+              "name": "pendingRow"
+            }
+          ]
+        }
+      },
+      "id": "5244aaeb-b98d-4e2e-8cc7-2d1cd3865a0d",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        400
+      ],
+      "notes": "Invoked by n8n/workflows/01-main-input-handler.json (node: Execute Workflow: Clarification Handler) whenever a chat id has an open row in the 'Pending Transaksi' sheet. See docs/04-mismatch-clarification-design.md for the full state machine."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "116534ee-9a34-44a0-b21b-55c14cba37b7",
+              "name": "SPREADSHEET_ID",
+              "value": "REPLACE_ME_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "b3836452-52d1-4446-839e-fc3feb59e621",
+              "name": "MAX_RETRIES",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "84767332-39d3-4d41-b375-c5176ca52048",
+              "name": "OWNER_CHAT_ID",
+              "value": "REPLACE_ME_OWNER_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4d7e938-2042-439b-87f3-5ddc1a6a12c2",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        250,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.pendingRow.Type}}",
+                    "rightValue": "low-confidence",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "low-confidence"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.pendingRow.Type}}",
+                    "rightValue": "mismatch",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "mismatch"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.pendingRow.Type}}",
+                    "rightValue": "edit-needs-field",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit-needs-field"
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {}
+      },
+      "id": "e4ea991c-75c0-408c-a99c-8200eeda638b",
+      "name": "Switch: Pending Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        500,
+        400
+      ],
+      "notes": "Fallback output (unrecognized type) marks the pending row Expired defensively so it never blocks future messages silently."
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Patches the pending payload's missing field(s) using the user's free-text reply.\n// Handles the common case: bot asked for a nominal, user replied with a bare number/shorthand.\nconst pending = $json.pendingRow;\nconst payload = JSON.parse(pending['Raw Payload'] || '{}');\nconst reply = $json.incomingText.trim().toLowerCase();\n\nfunction normalizeNominal(raw) {\n  const s = raw.replace(/[^0-9a-z.,]/g, '');\n  const m = s.match(/([0-9.,]+)(rb|ribu|k|jt|juta)?/);\n  if (!m) return null;\n  let num = parseFloat(m[1].replace(',', '.'));\n  if (m[2] === 'rb' || m[2] === 'ribu' || m[2] === 'k') num *= 1000;\n  if (m[2] === 'jt' || m[2] === 'juta') num *= 1000000;\n  return Math.round(num);\n}\n\nlet resolved = false;\nif (!payload.nominal) {\n  const n = normalizeNominal(reply);\n  if (n) { payload.nominal = n; resolved = true; }\n} else {\n  resolved = true; // other ambiguity (e.g. kategori) - treat any non-empty reply as the clarification\n  payload.catatan = (payload.catatan || '') + ' | klarifikasi: ' + reply;\n}\nif (resolved) payload.confidence = 'medium';\n\nreturn [{ json: { ...$json, payload, resolved } }];\n"
+      },
+      "id": "45f0db95-0f52-40f6-9cff-e7d56c29dcd4",
+      "name": "Code: Interpret Low-Confidence Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const pending = $json.pendingRow;\nconst payload = JSON.parse(pending['Raw Payload'] || '{}');\nconst reply = $json.incomingText.trim().toLowerCase();\n\nlet resolved = true;\nif (reply === 'teks') {\n  // keep payload.nominal as-is (from text extraction)\n} else if (reply === 'bukti') {\n  payload.nominal = payload.vision ? payload.vision.nominal_dari_bukti : payload.nominal;\n} else {\n  const n = parseInt(reply.replace(/[^0-9]/g, ''), 10);\n  if (!isNaN(n) && n > 0) { payload.nominal = n; } else { resolved = false; }\n}\nif (resolved) payload.status = 'mismatch-resolved';\n\nreturn [{ json: { ...$json, payload, resolved } }];\n"
+      },
+      "id": "7cc0e96c-60bf-4178-9840-641838bb2c22",
+      "name": "Code: Interpret Mismatch Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Expects 'field=value [field2=value2 ...]'\nconst pending = $json.pendingRow;\nconst payload = JSON.parse(pending['Raw Payload'] || '{}');\nconst reply = $json.incomingText.trim();\nconst fields = {};\nreply.split(/\\s+/).forEach(p => { const [k, v] = p.split('='); if (k && v) fields[k] = v; });\nconst resolved = Object.keys(fields).length > 0;\nreturn [{ json: { ...$json, payload, fields, resolved, id: payload.id } }];\n"
+      },
+      "id": "e628ad87-aa47-4aec-8137-5db913d50348",
+      "name": "Code: Interpret Edit Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "db898058-3f5d-4952-a61b-3ccb95294914",
+              "name": "resolved",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "43becef9-7898-4a2e-925f-ba23f51496d3",
+              "name": "forceExpire",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {
+          "includeOtherFields": true
+        }
+      },
+      "id": "37f309f9-eba8-4b2d-a720-3a4d50c6a753",
+      "name": "Set: Mark Unrecognized Expired",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        750,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "82c4e82e-5ce1-4fbf-bd4b-6f36c5819ce5",
+              "leftValue": "={{$json.resolved}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c0adb3ef-c15c-43ac-900a-e796363d4bd9",
+      "name": "IF Resolved (Low-Confidence)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "dc6aa02a-96e8-4503-b935-6cb54bbafd9e",
+              "leftValue": "={{$json.resolved}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b3128dd1-3993-4639-a2d4-c6d5a037fda1",
+      "name": "IF Resolved (Mismatch)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c2c02ff2-e730-428f-bf5c-6bb80eed510d",
+              "leftValue": "={{$json.resolved}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5f99d627-854c-4db6-a38d-b5aa105728c1",
+      "name": "IF Resolved (Edit)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const p = $json.payload;\nreturn [{ json: {\n  ID: (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()),\n  'Timestamp Input': new Date().toISOString(),\n  'Tanggal Transaksi': p.tanggal || new Date().toISOString().slice(0,10),\n  Jenis: p.jenis === 'masuk' ? 'Masuk' : 'Keluar',\n  Nominal: p.nominal,\n  Kategori: p.kategori || 'Lain-lain',\n  'Sub-kategori': p.sub_kategori || '',\n  'Tujuan/Merchant': p.tujuan || '',\n  'Sumber Dana': p.sumber_dana || '',\n  'Nama Rekening/Wallet': p.nama_rekening || '',\n  Catatan: p.catatan || '',\n  'Bukti (link)': p.webViewLink || '',\n  'Status Verifikasi': p.status === 'mismatch-resolved' ? 'Mismatch-Resolved' : (p.hasPhoto ? 'Verified' : 'Unverified'),\n  'Confidence AI': p.confidence || 'medium',\n  'Sumber Input': p.hasPhoto ? 'Telegram Text+Foto' : 'Telegram Text'\n}}];\n"
+      },
+      "id": "4bd82cc8-52f9-4dc0-bce8-59f628a16341",
+      "name": "Code: Finalize Transaksi Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "1de3a89f-3c53-4e99-9e67-fc4a7186e01a",
+      "name": "Sheets: Append Resolved Transaksi",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1500,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Transaksi",
+          "mode": "name"
+        },
+        "columns": {
+          "matchingColumns": [
+            "Pending ID"
+          ],
+          "value": "={{ { 'Pending ID': $json.pendingRow['Pending ID'], Status: 'Resolved' } }}"
+        },
+        "options": {}
+      },
+      "id": "40de203e-11a8-4c21-95c0-d9acf65372e2",
+      "name": "Sheets: Update Pending (Resolved)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1750,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "✅ Tercatat: Rp{{$json.Nominal}} - {{$json['Tujuan/Merchant']}} - {{$json['Sumber Dana']}} - {{$json['Tanggal Transaksi']}} (setelah klarifikasi)",
+        "additionalFields": {}
+      },
+      "id": "58b6fce1-f6d0-4754-bde3-59bdfae4fb44",
+      "name": "Telegram: Confirm Resolved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2000,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "columns": {
+          "matchingColumns": [
+            "ID"
+          ],
+          "value": "={{ Object.assign({ID: $json.id}, $json.fields) }}"
+        },
+        "options": {}
+      },
+      "id": "703fb408-59bc-46c2-9487-9d2450cec17f",
+      "name": "Sheets: Update Edited Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1250,
+        550
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Transaksi",
+          "mode": "name"
+        },
+        "columns": {
+          "matchingColumns": [
+            "Pending ID"
+          ],
+          "value": "={{ { 'Pending ID': $json.pendingRow['Pending ID'], Status: 'Resolved' } }}"
+        },
+        "options": {}
+      },
+      "id": "33a0e91b-e3af-4494-98aa-375775fd1501",
+      "name": "Sheets: Update Pending (Edit Resolved)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1500,
+        550
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "✏️ Transaksi {{$json.id}} diperbarui: {{ Object.entries($json.fields).map(([k,v]) => k+'='+v).join(', ') }}",
+        "additionalFields": {}
+      },
+      "id": "8676a026-d4bc-464d-a901-810f5727b719",
+      "name": "Telegram: Confirm Edit Resolved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1750,
+        550
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const pending = $json.pendingRow;\nconst maxRetries = parseInt($node['Config'].json.MAX_RETRIES, 10);\nconst retryCount = (parseInt(pending['Retry Count'], 10) || 0) + 1;\nconst expired = $json.forceExpire === true || retryCount >= maxRetries;\nreturn [{ json: { ...$json, retryCount, expired } }];\n"
+      },
+      "id": "bba88357-23fc-45a7-9101-b74cbd593589",
+      "name": "Code: Increment Retry / Check Cap",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        850
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "6533c324-624e-416d-a53f-87102a428fdf",
+              "leftValue": "={{$json.expired}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "09501065-a3e7-49f8-a157-a0dbb7b37ed2",
+      "name": "IF Expired",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        850
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Transaksi",
+          "mode": "name"
+        },
+        "columns": {
+          "matchingColumns": [
+            "Pending ID"
+          ],
+          "value": "={{ { 'Pending ID': $json.pendingRow['Pending ID'], Status: 'Expired' } }}"
+        },
+        "options": {}
+      },
+      "id": "9b0fe3f2-ec87-4ad6-8dd0-9563dafd6e46",
+      "name": "Sheets: Update Pending (Expired)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1500,
+        800
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "⏱️ Klarifikasi dibatalkan (terlalu banyak percobaan/tidak dikenali). Silakan input ulang transaksinya dari awal.",
+        "additionalFields": {}
+      },
+      "id": "fc7367d3-c36f-47ab-9098-21ab8540bc0a",
+      "name": "Telegram: Notify Expired",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1750,
+        800
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Transaksi",
+          "mode": "name"
+        },
+        "columns": {
+          "matchingColumns": [
+            "Pending ID"
+          ],
+          "value": "={{ { 'Pending ID': $json.pendingRow['Pending ID'], 'Retry Count': $json.retryCount } }}"
+        },
+        "options": {}
+      },
+      "id": "057aa5ef-bd59-4113-a678-ac20b11359df",
+      "name": "Sheets: Update Pending (Retry Count)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1500,
+        950
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "Maaf, belum kebaca 🙏 {{$json.pendingRow['Question Asked']}} (percobaan {{$json.retryCount}}/{{$node['Config'].json.MAX_RETRIES}})",
+        "additionalFields": {}
+      },
+      "id": "ce7dc2ed-5be1-4929-9d2a-14a68b52b7fc",
+      "name": "Telegram: Ask Again",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1750,
+        950
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Switch: Pending Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Pending Type": {
+      "main": [
+        [
+          {
+            "node": "Code: Interpret Low-Confidence Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Interpret Mismatch Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Interpret Edit Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: Mark Unrecognized Expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Interpret Low-Confidence Reply": {
+      "main": [
+        [
+          {
+            "node": "IF Resolved (Low-Confidence)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Interpret Mismatch Reply": {
+      "main": [
+        [
+          {
+            "node": "IF Resolved (Mismatch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Interpret Edit Reply": {
+      "main": [
+        [
+          {
+            "node": "IF Resolved (Edit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Resolved (Low-Confidence)": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize Transaksi Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Increment Retry / Check Cap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Resolved (Mismatch)": {
+      "main": [
+        [
+          {
+            "node": "Code: Finalize Transaksi Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Increment Retry / Check Cap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Finalize Transaksi Row": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Append Resolved Transaksi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Append Resolved Transaksi": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Update Pending (Resolved)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Update Pending (Resolved)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Resolved (Edit)": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Update Edited Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Increment Retry / Check Cap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Update Edited Row": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Update Pending (Edit Resolved)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Update Pending (Edit Resolved)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Edit Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Mark Unrecognized Expired": {
+      "main": [
+        [
+          {
+            "node": "Code: Increment Retry / Check Cap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Increment Retry / Check Cap": {
+      "main": [
+        [
+          {
+            "node": "IF Expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Expired": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Update Pending (Expired)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets: Update Pending (Retry Count)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Update Pending (Expired)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Notify Expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Update Pending (Retry Count)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Ask Again",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "finxxment-02-clarification-handler",
+  "tags": []
+}
