@@ -72,3 +72,25 @@ an immediate Telegram warning; add a `/hutang tambah utang Budi 50000 2026-06-01
 past due date and wait for (or manually trigger) workflow 05 — confirm it's flagged as overdue;
 create a `/goal tambah Kamera 5000000`, log a transaction with `Kategori=Tabungan/Investasi` and
 `Sub-kategori=Kamera`, then `/goal` — confirm progress reflects it.
+
+## Fase 7 — Visual polish & formula correctness
+
+- [x] **Full visual formatting** for every sheet — colored headers, Rupiah/date/percent number
+  formats, conditional-formatting status colors, row banding, hidden implementation-detail
+  columns — via `apps-script/01-sheet-formatting.gs`. Re-apply any time with the "Re-apply
+  Formatting" menu item.
+- [x] **In-sheet `📖 Panduan` guide tab** (`apps-script/02-panduan-sheet.gs`), pinned first,
+  explaining every sheet, command, category/sumber-dana list, and status color legend directly
+  in the spreadsheet.
+- [x] **Fixed real formula bugs**: a Dashboard layout collision that could throw `#REF!` as data
+  grew, an append-safety bug in `Tabungan Goals` that could silently truncate its `ARRAYFORMULA`s,
+  a chart query that double-counted blank rows, and several "this month"/"last month" filters
+  that were missing a year check (would silently mix in the same calendar month from prior
+  years once more than ~12 months of history exist). Full writeup:
+  `docs/07-sheet-formulas-and-formatting.md`.
+
+Test: re-run `provisionFinxxmentSheets()` on a spreadsheet that already has data (idempotency
+check) — confirm no merge/formatting errors and the `📖 Panduan` tab lands first; add 13+
+budget categories and 15+ savings goals and refresh the Dashboard — confirm no `#REF!` anywhere;
+check a `/laporan bulan lalu` in January against data from two different Decembers (this year
+and last) — confirm only the correct one is included.

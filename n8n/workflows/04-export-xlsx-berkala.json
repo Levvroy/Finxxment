@@ -14,7 +14,7 @@
           ]
         }
       },
-      "id": "2fa59441-e6f5-44c6-aa14-3624d8d5e906",
+      "id": "f8b6dc34-f331-4edc-ab91-abf909ddf01f",
       "name": "Cron: Monthly Export",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
@@ -28,13 +28,13 @@
         "assignments": {
           "assignments": [
             {
-              "id": "0392c42f-1d8d-401c-b007-04ed730b3b41",
+              "id": "d7ab9b47-95c9-4725-9907-69b7d5f164c6",
               "name": "SPREADSHEET_ID",
               "value": "REPLACE_ME_SPREADSHEET_ID",
               "type": "string"
             },
             {
-              "id": "8b2a0e71-a909-422b-9fe5-a5a1485fce35",
+              "id": "bc5c9fe2-e891-4c78-a03b-e65948c21ac5",
               "name": "OWNER_CHAT_ID",
               "value": "REPLACE_ME_OWNER_CHAT_ID",
               "type": "string"
@@ -42,7 +42,7 @@
           ]
         }
       },
-      "id": "aba47102-ba4d-490c-afab-d1661a380cec",
+      "id": "1a297ef9-7f57-4a24-a47b-5f1b56f623d1",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
@@ -68,7 +68,7 @@
           }
         }
       },
-      "id": "ffa2e2e2-49fb-4916-ab87-f2623f5d95e8",
+      "id": "d549a997-7692-4cf2-b33d-bfaff4d70031",
       "name": "Google Drive: Export XLSX",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
@@ -93,7 +93,7 @@
           "caption": "📎 Export bulanan finxxment (.xlsx)"
         }
       },
-      "id": "c3cd1741-ce5a-441c-bac8-386b1e28014d",
+      "id": "cf30a1b9-1f14-42f7-a1a1-c34c09e25969",
       "name": "Telegram: Send XLSX Document",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,

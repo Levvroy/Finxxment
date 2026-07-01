@@ -14,7 +14,7 @@
           ]
         }
       },
-      "id": "0f938ddd-81d2-4a6d-ad7a-6af35974cabf",
+      "id": "e4394351-8c85-4e8f-b54e-da3a2b268cd4",
       "name": "Cron: Weekly",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
@@ -37,7 +37,7 @@
           ]
         }
       },
-      "id": "a1e439e6-593f-4fdd-9e13-1086e4688429",
+      "id": "5eea585d-4f7a-40a1-aaa4-f32addf52ddb",
       "name": "Cron: Monthly",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
@@ -50,7 +50,7 @@
       "parameters": {
         "mode": "chooseBranch"
       },
-      "id": "58af8a06-5f7b-4deb-b408-d2fcfb0a9f9c",
+      "id": "6e17b65e-980e-418e-b59f-aa7277c46471",
       "name": "Merge Triggers",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
@@ -64,13 +64,13 @@
         "assignments": {
           "assignments": [
             {
-              "id": "320f407b-688f-41db-a7f6-70fe101833ea",
+              "id": "281e08b1-83c3-422a-b8f3-a2242e4351c1",
               "name": "SPREADSHEET_ID",
               "value": "REPLACE_ME_SPREADSHEET_ID",
               "type": "string"
             },
             {
-              "id": "b5bce9a0-2491-4af6-b4a9-f8b3a8e2db62",
+              "id": "16992f0f-c943-48de-948c-20f732816fbd",
               "name": "OWNER_CHAT_ID",
               "value": "REPLACE_ME_OWNER_CHAT_ID",
               "type": "string"
@@ -78,7 +78,7 @@
           ]
         }
       },
-      "id": "b99bc726-acaa-4f91-b008-8db6ac91a6f0",
+      "id": "73ab7532-e455-4ec9-89f4-7828674e02b9",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
@@ -102,7 +102,7 @@
         },
         "options": {}
       },
-      "id": "d12e626a-c6d0-44f6-9afc-dbc21cb3b7b9",
+      "id": "1808fb26-11c0-4334-afb4-0248cadb73d1",
       "name": "Sheets: Read Period Data",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -120,9 +120,9 @@
     {
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const rows = $input.all().map(i => i.json);\nconst now = new Date();\nconst thisMonth = rows.filter(r => new Date(r['Tanggal Transaksi']).getMonth() === now.getMonth());\nconst lastMonthNum = now.getMonth() === 0 ? 11 : now.getMonth() - 1;\nconst lastMonth = rows.filter(r => new Date(r['Tanggal Transaksi']).getMonth() === lastMonthNum);\nfunction sum(list, jenis) { return list.filter(r => r.Jenis === jenis).reduce((s, r) => s + Number(r.Nominal || 0), 0); }\nconst byKategori = {};\nthisMonth.filter(r => r.Jenis === 'Keluar').forEach(r => { byKategori[r.Kategori] = (byKategori[r.Kategori] || 0) + Number(r.Nominal || 0); });\nconst topKategori = Object.entries(byKategori).sort((a,b) => b[1]-a[1]).slice(0,5).map(([kategori,total]) => ({kategori, total}));\nconst dayOfMonth = now.getDate();\nconst daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();\nconst totalKeluar = sum(thisMonth, 'Keluar');\nconst burnRateHarian = Math.round(totalKeluar / dayOfMonth);\nreturn [{ json: {\n  periode: 'bulanan',\n  total_masuk: sum(thisMonth, 'Masuk'),\n  total_keluar: totalKeluar,\n  total_masuk_periode_lalu: sum(lastMonth, 'Masuk'),\n  total_keluar_periode_lalu: sum(lastMonth, 'Keluar'),\n  top_kategori: topKategori,\n  burn_rate_harian: burnRateHarian,\n  proyeksi_akhir_bulan: burnRateHarian * daysInMonth\n}}];\n"
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst now = new Date();\nconst lastMonthRef = new Date(now.getFullYear(), now.getMonth() - 1, 1);\n// Both month AND year must match - month alone would also match this calendar month\n// (or last month's) from every earlier year once more than ~12 months of history exist.\nconst thisMonth = rows.filter(r => { const d = new Date(r['Tanggal Transaksi']); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });\nconst lastMonth = rows.filter(r => { const d = new Date(r['Tanggal Transaksi']); return d.getMonth() === lastMonthRef.getMonth() && d.getFullYear() === lastMonthRef.getFullYear(); });\nfunction sum(list, jenis) { return list.filter(r => r.Jenis === jenis).reduce((s, r) => s + Number(r.Nominal || 0), 0); }\nconst byKategori = {};\nthisMonth.filter(r => r.Jenis === 'Keluar').forEach(r => { byKategori[r.Kategori] = (byKategori[r.Kategori] || 0) + Number(r.Nominal || 0); });\nconst topKategori = Object.entries(byKategori).sort((a,b) => b[1]-a[1]).slice(0,5).map(([kategori,total]) => ({kategori, total}));\nconst dayOfMonth = now.getDate();\nconst daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();\nconst totalKeluar = sum(thisMonth, 'Keluar');\nconst burnRateHarian = Math.round(totalKeluar / dayOfMonth);\nreturn [{ json: {\n  periode: 'bulanan',\n  total_masuk: sum(thisMonth, 'Masuk'),\n  total_keluar: totalKeluar,\n  total_masuk_periode_lalu: sum(lastMonth, 'Masuk'),\n  total_keluar_periode_lalu: sum(lastMonth, 'Keluar'),\n  top_kategori: topKategori,\n  burn_rate_harian: burnRateHarian,\n  proyeksi_akhir_bulan: burnRateHarian * daysInMonth\n}}];\n"
       },
-      "id": "46bf6b61-d3ab-4c7a-bd30-a6e3173afb8e",
+      "id": "9cb07dc7-2b25-4739-ba37-5fbc1859a09c",
       "name": "Code: Aggregate + Insight Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -140,7 +140,7 @@
         "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_INSIGHT_PROMPT + \"\\n\\nInput: \" + JSON.stringify($json) } ] } ] } }}",
         "options": {}
       },
-      "id": "93649329-dc19-48cc-83a9-65ad7f58a0a8",
+      "id": "300eb7d8-272b-472c-b1b8-4122b568eb9f",
       "name": "Gemini: Generate Insight",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -161,7 +161,7 @@
         "language": "javaScript",
         "jsCode": "const raw = $input.first().json;\nconst text = raw.candidates ? raw.candidates[0].content.parts[0].text : 'Laporan bulanan tidak tersedia (Gemini error).';\nreturn [{ json: { insightText: text } }];\n"
       },
-      "id": "69a4d5de-840c-4faa-a4c7-0dd4b7b760ef",
+      "id": "bd7e9428-6696-4e3b-9e59-2aad3ba1d9cc",
       "name": "Code: Extract Insight Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -176,7 +176,7 @@
         "text": "={{$json.insightText}}",
         "additionalFields": {}
       },
-      "id": "f0f14e7b-db59-42ea-9f63-11a111f709e4",
+      "id": "8a468b3f-e38c-4d49-b3f0-e64f71534a9f",
       "name": "Telegram: Send Scheduled Report",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,

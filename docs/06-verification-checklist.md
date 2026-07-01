@@ -18,6 +18,26 @@
 None of this proves the system actually works end to end — that requires real credentials and
 a running n8n instance, which is out of scope for this session.
 
+## Manual checklist: formatting, Panduan tab, and formula fixes (docs/07)
+
+- [ ] Run `provisionFinxxmentSheets()` on a blank Sheet — confirm every sheet is created with
+  colored headers, currency/date number formats, conditional-formatting colors, and row banding
+  matching `docs/07-sheet-formulas-and-formatting.md`; confirm `📖 Panduan` lands as the first
+  tab with readable, bordered sections.
+- [ ] Re-run `provisionFinxxmentSheets()` a second time on the same (now non-empty) Sheet —
+  confirm it completes without a merge/formatting error (idempotency for the title banner and
+  Panduan tab).
+- [ ] Add 15+ rows to `Tabungan Goals` via `/goal tambah` and 13 budget categories with real
+  budget numbers, then refresh the Dashboard — confirm no `#REF!` anywhere (the layout-collision
+  fix) and the `Tabungan Goals.Progress Bar` column renders a readable block bar.
+- [ ] Log transactions in the current month and in the same calendar month a year ago, then run
+  `/laporan bulan ini` and check the kategori/sumber-dana pie charts — confirm last year's data
+  is excluded (the missing-year-filter fix).
+- [ ] Check the cashflow chart on Dashboard — confirm there's no spurious "(empty)" bar/category
+  from the ~2000 pre-provisioned blank rows (the blank-row QUERY fix).
+- [ ] Mark a `Hutang Piutang` entry with a past `Jatuh Tempo` and `Status = Belum Lunas` —
+  confirm the whole row highlights red (overdue flag), and it clears once marked `Lunas`.
+
 ## Manual test checklist (run this after completing `docs/02-setup-guide.md`)
 
 - [ ] Send `/help` — bot replies with the static usage text.

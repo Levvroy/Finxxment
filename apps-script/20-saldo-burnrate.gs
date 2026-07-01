@@ -37,10 +37,13 @@ function writeSaldoToDashboard_(saldo) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
   const startRow = DASHBOARD_ROW_SALDO_HEADER + 1;
   const startCol = 1;
-  sheet.getRange(startRow - 1, startCol, 1, 2).setValues([['Saldo per Sumber Dana', 'Nilai']]).setFontWeight('bold');
+  sheet.getRange(startRow - 1, startCol, 1, 2).setValues([['💰 Saldo per Sumber Dana', 'Nilai']])
+    .setFontWeight('bold').setBackground(FINX_COLOR_SECTION_SALDO);
   const rows = Object.entries(saldo);
   if (rows.length > 0) {
-    sheet.getRange(startRow, startCol, rows.length, 2).setValues(rows);
+    const range = sheet.getRange(startRow, startCol, rows.length, 2);
+    range.setValues(rows);
+    sheet.getRange(startRow, startCol + 1, rows.length, 1).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
   }
 }
 
@@ -78,10 +81,11 @@ function writeBurnRateToDashboard_(result) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
   const startRow = DASHBOARD_ROW_BURNRATE_HEADER;
   sheet.getRange(startRow, 1, 4, 2).setValues([
-    ['Burn Rate', ''],
+    ['🔥 Burn Rate', ''],
     ['Pengeluaran Bulan Ini (MTD)', result.totalKeluarMtd],
     ['Rata-rata Harian', result.avgDailySpend],
     ['Proyeksi Akhir Bulan', result.projectedMonthEnd]
   ]);
-  sheet.getRange(startRow, 1).setFontWeight('bold');
+  sheet.getRange(startRow, 1, 1, 2).setFontWeight('bold').setBackground(FINX_COLOR_SECTION_BURNRATE);
+  sheet.getRange(startRow + 1, 2, 3, 1).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
 }

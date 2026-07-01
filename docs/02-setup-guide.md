@@ -11,7 +11,9 @@ follow it top to bottom the first time.
    paste the contents), plus `appsscript.json` via Project Settings > "Show appsscript.json in
    editor". Run `provisionFinxxmentSheets` once, authorize the requested scopes. Reload the
    Sheet — you should see `Transaksi`, `Pending Transaksi`, `Saldo Awal`, `Budget`,
-   `Log Error`, `Hutang Piutang`, `Tabungan Goals`, `Dashboard`, plus a new "Finxxment" menu
+   `Log Error`, `Hutang Piutang`, `Tabungan Goals`, `Dashboard`, a `📖 Panduan` tab pinned first
+   with a full in-sheet guide, all fully formatted (colors, currency formats, conditional
+   formatting — see `docs/07-sheet-formulas-and-formatting.md`), plus a new "Finxxment" menu
    (from `90-triggers.gs`'s `onOpen`).
 
 3. **Set the webhook shared secret.** In the Apps Script project: Project Settings > Script

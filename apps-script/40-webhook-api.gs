@@ -80,8 +80,11 @@ function buildLaporanPayload_(period) {
       return diffDays >= 0 && diffDays <= 7;
     }
     if (period === 'bulan_lalu') {
-      const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-      return d.getMonth() === lastMonth;
+      // new Date(year, month-1, 1) correctly rolls the year back too when the current month
+      // is January - checking getMonth() alone would also match this same calendar month from
+      // every earlier year once more than ~12 months of history exist.
+      const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return d.getMonth() === lastMonthDate.getMonth() && d.getFullYear() === lastMonthDate.getFullYear();
     }
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });

@@ -13,6 +13,7 @@ function calculateSavingsGoals() {
   const targetIdx = header.indexOf('Target Nominal');
   const terkumpulIdx = header.indexOf('Nominal Terkumpul');
   const progressIdx = header.indexOf('Progress %');
+  const progressBarIdx = header.indexOf('Progress Bar');
   const statusIdx = header.indexOf('Status');
 
   const goals = [];
@@ -24,6 +25,7 @@ function calculateSavingsGoals() {
       target: Number(row[targetIdx]) || 0,
       terkumpul: Number(row[terkumpulIdx]) || 0,
       progress: Number(row[progressIdx]) || 0,
+      progressBar: row[progressBarIdx] || '',
       status: row[statusIdx] || 'Berjalan'
     });
 
@@ -41,10 +43,14 @@ function calculateSavingsGoals() {
 function writeGoalsToDashboard_(goals) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
   const startRow = DASHBOARD_ROW_GOALS_HEADER;
-  const headers = ['Tabungan Goals', 'Target', 'Terkumpul', 'Progress', 'Status'];
-  sheet.getRange(startRow, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+  const headers = ['🎯 Tabungan Goals', 'Target', 'Terkumpul', 'Progress', 'Status', 'Bar'];
+  sheet.getRange(startRow, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold').setBackground(FINX_COLOR_SECTION_GOALS);
   if (goals.length > 0) {
-    const values = goals.map(function (g) { return [g.nama, g.target, g.terkumpul, g.progress + '%', g.status]; });
+    const values = goals.map(function (g) { return [g.nama, g.target, g.terkumpul, g.progress, g.status, g.progressBar]; });
     sheet.getRange(startRow + 1, 1, values.length, headers.length).setValues(values);
+    sheet.getRange(startRow + 1, 2, values.length, 2).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
+    sheet.getRange(startRow + 1, 4, values.length, 1).setNumberFormat(FINX_FORMAT_PERCENT_SUFFIX).setHorizontalAlignment('right');
+    sheet.getRange(startRow + 1, 6, values.length, 1).setFontFamily('Courier New');
   }
 }

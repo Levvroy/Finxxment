@@ -33,7 +33,7 @@ function calculateBudgetVsActual() {
     const actual = actualByKategori[kategori] || 0;
     const delta = budget - actual;
     const percentUsed = budget > 0 ? Math.round((actual / budget) * 100) : 0;
-    comparison.push([kategori, budget, actual, delta, percentUsed + '%']);
+    comparison.push([kategori, budget, actual, delta, percentUsed]);
   }
 
   writeBudgetComparisonToDashboard_(comparison);
@@ -43,20 +43,24 @@ function calculateBudgetVsActual() {
 function writeBudgetComparisonToDashboard_(comparison) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
   const startRow = DASHBOARD_ROW_BUDGET_HEADER;
-  const headers = ['Kategori', 'Budget', 'Actual', 'Delta', '% Terpakai'];
-  sheet.getRange(startRow, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+  const headers = ['📐 Budget vs Actual', 'Budget', 'Actual', 'Delta', '% Terpakai'];
+  sheet.getRange(startRow, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold').setBackground(FINX_COLOR_SECTION_BUDGET);
   if (comparison.length > 0) {
     const range = sheet.getRange(startRow + 1, 1, comparison.length, headers.length);
     range.setValues(comparison);
+    sheet.getRange(startRow + 1, 2, comparison.length, 3).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
+    sheet.getRange(startRow + 1, 5, comparison.length, 1).setNumberFormat(FINX_FORMAT_PERCENT_SUFFIX).setHorizontalAlignment('right');
 
-    // Clear old rules touching this range, then flag over-budget rows (percentUsed > 100).
+    // Clear old rules touching this range, then flag over-budget rows (Delta < 0).
     const rules = sheet.getConditionalFormatRules().filter(function (r) {
       return !r.getRanges().some(function (rg) { return rg.getRow() === startRow + 1 && rg.getColumn() === 1; });
     });
     const overBudgetRange = sheet.getRange(startRow + 1, 1, comparison.length, headers.length);
     const rule = SpreadsheetApp.newConditionalFormatRule()
       .whenFormulaSatisfied('=$D' + (startRow + 1) + '<0')
-      .setBackground('#f4cccc')
+      .setBackground(FINX_COLOR_DANGER_BG)
+      .setFontColor(FINX_COLOR_DANGER_TEXT)
       .setRanges([overBudgetRange])
       .build();
     rules.push(rule);

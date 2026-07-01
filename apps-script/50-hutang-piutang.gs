@@ -42,9 +42,10 @@ function writeHutangPiutangToDashboard_(result) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
   const startRow = DASHBOARD_ROW_HUTANG_HEADER;
   sheet.getRange(startRow, 1, 3, 2).setValues([
-    ['Hutang Piutang', ''],
+    ['🤝 Hutang Piutang', ''],
     ['Total Piutang (orang berhutang ke saya)', result.totalPiutang],
     ['Total Utang (saya berhutang)', result.totalUtang]
   ]);
-  sheet.getRange(startRow, 1).setFontWeight('bold');
+  sheet.getRange(startRow, 1, 1, 2).setFontWeight('bold').setBackground(FINX_COLOR_SECTION_HUTANG);
+  sheet.getRange(startRow + 1, 2, 2, 1).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
 }

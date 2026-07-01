@@ -19,6 +19,8 @@ Telegram bot, Gemini key, or Google account until you provision them yourself.
 3. **`docs/05-build-order-fase-1-to-5.md`** — bring the system up incrementally, phase by
    phase, instead of all at once.
 4. **`docs/06-verification-checklist.md`** — what to test once it's live.
+5. **`docs/07-sheet-formulas-and-formatting.md`** — the Sheet's visual design and a set of real
+   formula bugs found and fixed (read this before adding a new computed column).
 
 ## Layout
 
@@ -26,9 +28,9 @@ Telegram bot, Gemini key, or Google account until you provision them yourself.
 |---|---|
 | `n8n/workflows/` | 5 n8n workflow JSON exports (main input handler, clarification handler, scheduled report, monthly xlsx export, daily proactive alerts) |
 | `n8n/prompts/` | Gemini prompt text, pasted into the corresponding n8n nodes |
-| `apps-script/` | Sheets-side automation: bootstrap provisioning, dashboard layout/charts, saldo/burn-rate, budget vs actual, hutang piutang, savings goals, a webhook API n8n calls into, and trigger/menu registration |
+| `apps-script/` | Sheets-side automation: bootstrap provisioning, visual formatting, the in-sheet Panduan tab, dashboard layout/charts, saldo/burn-rate, budget vs actual, hutang piutang, savings goals, a webhook API n8n calls into, and trigger/menu registration |
 | `config/` | Canonical category/sumber-dana lists and tolerance settings (also duplicated into prompts and Apps Script — see `docs/03-category-sumber-dana-config.md`) |
-| `docs/` | Architecture, Sheets schema, setup guide, category config notes, the mismatch/clarification state-machine design, build order, and the verification checklist |
+| `docs/` | Architecture, Sheets schema, setup guide, category config notes, the mismatch/clarification state-machine design, sheet formulas & formatting rationale, build order, and the verification checklist |
 
 ## Feature summary
 
@@ -50,6 +52,10 @@ Telegram bot, Gemini key, or Google account until you provision them yourself.
 - **Automation extras**: unprompted weekly/monthly recap, monthly `.xlsx` export
 - **Security**: owner-chat-id whitelist, private Drive folder for proof photos, all secrets in
   n8n Credentials (never hardcoded)
+- **Presentation**: every sheet is fully formatted (colored headers, Rupiah/date/percent number
+  formats, conditional-formatting status colors, row banding, a text progress bar for savings
+  goals) and a `📖 Panduan` guide tab is pinned as the first tab explaining every sheet and
+  command in-place — see `docs/07-sheet-formulas-and-formatting.md`
 
 ## Fixed categories & payment sources
 

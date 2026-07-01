@@ -35,9 +35,13 @@ function buildCashflowChart() {
   const data = getSheetName_('Transaksi');
   const col = DASHBOARD_CHART_HELPER_COL;
   // Column P = Tag Bulan (YYYY-MM), pivoted by column D = Jenis (Masuk/Keluar).
+  // "P != ''" (not "is not null"): Tag Bulan is an ARRAYFORMULA that returns a literal empty
+  // string "" for every unused pre-provisioned row, and QUERY treats a formula-produced ""
+  // as a real (non-null) value - "is not null" would wrongly include hundreds of blank rows
+  // as a spurious "(empty)" group in the chart.
   writeQueryHelper_(
     sheet, DASHBOARD_CHART_HELPER_ROW, col,
-    "=QUERY(" + data + "!A2:Q, \"select P, sum(E) where P is not null group by P pivot D\", 1)"
+    "=QUERY(" + data + "!A2:Q, \"select P, sum(E) where P != '' group by P pivot D\", 1)"
   );
   replaceChart_(sheet, 'cashflow_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.COLUMN)
@@ -51,9 +55,11 @@ function buildKategoriPieChart() {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
   const data = getSheetName_('Transaksi');
   const col = DASHBOARD_CHART_HELPER_COL + 3;
+  // Both month(C) and year(C) must match "today" - month(C) alone would also match this same
+  // calendar month from a previous year once more than ~12 months of history exist.
   writeQueryHelper_(
     sheet, DASHBOARD_CHART_HELPER_ROW, col,
-    "=QUERY(" + data + "!A2:Q, \"select F, sum(E) where D = 'Keluar' and month(C) = month(today()) group by F label sum(E) 'Total'\", 1)"
+    "=QUERY(" + data + "!A2:Q, \"select F, sum(E) where D = 'Keluar' and month(C) = month(today()) and year(C) = year(today()) group by F label sum(E) 'Total'\", 1)"
   );
   replaceChart_(sheet, 'kategori_pie_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.PIE)
@@ -69,7 +75,7 @@ function buildSumberDanaBreakdownChart() {
   const col = DASHBOARD_CHART_HELPER_COL + 6;
   writeQueryHelper_(
     sheet, DASHBOARD_CHART_HELPER_ROW, col,
-    "=QUERY(" + data + "!A2:Q, \"select I, sum(E) where D = 'Keluar' and month(C) = month(today()) group by I label sum(E) 'Total'\", 1)"
+    "=QUERY(" + data + "!A2:Q, \"select I, sum(E) where D = 'Keluar' and month(C) = month(today()) and year(C) = year(today()) group by I label sum(E) 'Total'\", 1)"
   );
   replaceChart_(sheet, 'sumber_dana_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.PIE)
@@ -102,7 +108,7 @@ function buildTop5CategoriesChart() {
   const col = DASHBOARD_CHART_HELPER_COL + 12;
   writeQueryHelper_(
     sheet, DASHBOARD_CHART_HELPER_ROW, col,
-    "=QUERY(" + data + "!A2:Q, \"select F, sum(E) where D = 'Keluar' and month(C) = month(today()) group by F order by sum(E) desc limit 5 label sum(E) 'Total'\", 1)"
+    "=QUERY(" + data + "!A2:Q, \"select F, sum(E) where D = 'Keluar' and month(C) = month(today()) and year(C) = year(today()) group by F order by sum(E) desc limit 5 label sum(E) 'Total'\", 1)"
   );
   replaceChart_(sheet, 'top5_kategori_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.BAR)

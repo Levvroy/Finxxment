@@ -8,6 +8,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Finxxment')
     .addItem('Run Bootstrap Provisioning', 'provisionFinxxmentSheets')
+    .addItem('Buka Panduan', 'openPanduanSheet_')
     .addSeparator()
     .addItem('Refresh Dashboard Now', 'refreshDashboard')
     .addItem('Recalculate Saldo', 'calculateSaldo')
@@ -15,8 +16,15 @@ function onOpen() {
     .addItem('Recalculate Hutang Piutang', 'calculateHutangPiutang')
     .addItem('Recalculate Tabungan Goals', 'calculateSavingsGoals')
     .addSeparator()
+    .addItem('Re-apply Formatting', 'formatAllSheets_')
     .addItem('Install Triggers', 'installTriggers')
     .addToUi();
+}
+
+function openPanduanSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName(PANDUAN_SHEET_NAME);
+  if (sheet) ss.setActiveSheet(sheet);
 }
 
 function installTriggers() {

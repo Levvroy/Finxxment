@@ -2,8 +2,19 @@
 
 This is the human-readable reference. The executable source of truth is
 `apps-script/00-bootstrap-provision.gs` — run `provisionFinxxmentSheets()` once against a blank
-spreadsheet and it creates every sheet below with the exact headers, dropdowns, and formulas.
-If you ever edit this doc, update the bootstrap script to match (and vice versa).
+spreadsheet and it creates every sheet below with the exact headers, dropdowns, and formulas,
+applies the visual formatting from `apps-script/01-sheet-formatting.gs` (colors, currency/date
+number formats, conditional formatting, banding — see `docs/07-sheet-formulas-and-formatting.md`
+for the full design rationale and the formula bugs it fixes), and builds a `📖 Panduan` guide
+tab (`apps-script/02-panduan-sheet.gs`) as the first tab so the whole system is explained
+in-sheet, not just in this repo. If you ever edit this doc, update the bootstrap script to
+match (and vice versa).
+
+## Sheet: `📖 Panduan` (in-sheet guide, first tab)
+
+Not part of the data model — a human-readable guide covering every sheet's purpose, every
+Telegram command, the category/sumber-dana legend, and a status/color legend. Rebuilt from
+scratch each time `provisionFinxxmentSheets()` runs.
 
 ## Sheet: `Transaksi` (main ledger)
 
@@ -98,9 +109,14 @@ is computed automatically, not entered by hand.
 | Target Nominal | Goal amount (IDR) |
 | Tanggal Target | Optional target date |
 | Sumber Dana | Optional, which account the savings sit in |
+| Status | dropdown: `Berjalan` / `Tercapai` (auto-set at 100% by `calculateSavingsGoals()`) / `Dibatalkan` |
 | Nominal Terkumpul | Formula (`SUMIFS` against `Transaksi`), auto-computed |
 | Progress % | Formula, auto-computed from Nominal Terkumpul / Target Nominal |
-| Status | dropdown: `Berjalan` / `Tercapai` (auto-set at 100% by `calculateSavingsGoals()`) / `Dibatalkan` |
+| Progress Bar | Formula (`REPT`), auto-computed text bar e.g. `██████░░░░` |
+
+`Nominal Terkumpul`, `Progress %`, and `Progress Bar` are deliberately the *last* three columns
+— see `docs/07-sheet-formulas-and-formatting.md` for why that ordering matters (it's what keeps
+n8n's `/goal tambah` append from ever risking the `ARRAYFORMULA`s in those columns).
 
 ## Sheet: `Dashboard` (generated, not manually edited)
 

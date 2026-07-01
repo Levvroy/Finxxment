@@ -40,12 +40,17 @@ const HUTANG_PIUTANG_HEADERS = [
   'ID', 'Tanggal', 'Arah', 'Nama Pihak', 'Nominal', 'Jatuh Tempo', 'Status', 'Catatan'
 ];
 
+// Nominal Terkumpul / Progress % are computed by formula and MUST stay the trailing columns
+// (never insert a real/writable column after them). n8n's /goal append only ever writes
+// Nama Goal..Status, so keeping the two computed columns last guarantees the append never
+// touches (and can't accidentally blank) the cells the ARRAYFORMULA below spills into — see
+// docs/07-sheet-formulas-and-formatting.md for why this ordering matters.
 const GOALS_HEADERS = [
-  'Nama Goal', 'Target Nominal', 'Tanggal Target', 'Sumber Dana', 'Nominal Terkumpul', 'Progress %', 'Status'
+  'Nama Goal', 'Target Nominal', 'Tanggal Target', 'Sumber Dana', 'Status', 'Nominal Terkumpul', 'Progress %', 'Progress Bar'
 ];
 
 const PROVISION_MARKER_KEY = 'finxxment_provisioned_version';
-const PROVISION_VERSION = '2';
+const PROVISION_VERSION = '3';
 
 function provisionFinxxmentSheets() {
   const ss = SpreadsheetApp.getActive();
@@ -60,13 +65,18 @@ function provisionFinxxmentSheets() {
   ensureSheetWithHeaders_(ss, 'Dashboard', []);
 
   applyTransaksiValidationAndFormulas_(ss.getSheetByName('Transaksi'));
+  applyPendingValidation_(ss.getSheetByName('Pending Transaksi'));
   applyHutangPiutangValidation_(ss.getSheetByName('Hutang Piutang'));
   applyGoalsFormulas_(ss.getSheetByName('Tabungan Goals'));
   seedSaldoAwal_(ss.getSheetByName('Saldo Awal'));
   seedBudget_(ss.getSheetByName('Budget'));
 
+  formatAllSheets_();
+  provisionPanduanSheet_(ss);
+  refreshDashboard();
+
   PropertiesService.getDocumentProperties().setProperty(PROVISION_MARKER_KEY, PROVISION_VERSION);
-  SpreadsheetApp.getUi().alert('finxxment: provisioning selesai. Sheets siap dipakai.');
+  SpreadsheetApp.getUi().alert('finxxment: provisioning selesai. Sheets siap dipakai — cek tab "📖 Panduan" untuk panduan lengkap.');
 }
 
 function ensureSheetWithHeaders_(ss, name, headers) {
@@ -116,6 +126,14 @@ function applyTransaksiValidationAndFormulas_(sheet) {
   );
 }
 
+function applyPendingValidation_(sheet) {
+  const numRows = 500;
+  const typeCol = PENDING_HEADERS.indexOf('Type') + 1;
+  const statusCol = PENDING_HEADERS.indexOf('Status') + 1;
+  setDropdown_(sheet, typeCol, numRows, ['low-confidence', 'mismatch', 'edit-needs-field']);
+  setDropdown_(sheet, statusCol, numRows, ['Waiting', 'Resolved', 'Expired']);
+}
+
 function applyHutangPiutangValidation_(sheet) {
   const numRows = 500;
   const arahCol = HUTANG_PIUTANG_HEADERS.indexOf('Arah') + 1;
@@ -130,11 +148,13 @@ function applyGoalsFormulas_(sheet) {
   const targetCol = GOALS_HEADERS.indexOf('Target Nominal') + 1;
   const terkumpulCol = GOALS_HEADERS.indexOf('Nominal Terkumpul') + 1;
   const progressCol = GOALS_HEADERS.indexOf('Progress %') + 1;
+  const progressBarCol = GOALS_HEADERS.indexOf('Progress Bar') + 1;
   const statusCol = GOALS_HEADERS.indexOf('Status') + 1;
 
   const namaLetter = columnToLetter_(namaCol);
   const targetLetter = columnToLetter_(targetCol);
   const terkumpulLetter = columnToLetter_(terkumpulCol);
+  const progressLetter = columnToLetter_(progressCol);
 
   // Terkumpul = sum of Transaksi rows where Kategori = "Tabungan/Investasi" and
   // Sub-kategori matches this goal's Nama Goal (the user picks a consistent goal name as the
@@ -146,6 +166,13 @@ function applyGoalsFormulas_(sheet) {
   sheet.getRange(2, progressCol).setFormula(
     '=ARRAYFORMULA(IF(' + namaLetter + '2:' + namaLetter + '="","",' +
     'IFERROR(ROUND(' + terkumpulLetter + '2:' + terkumpulLetter + '/' + targetLetter + '2:' + targetLetter + '*100,0),0)))'
+  );
+  // Quick visual bar (10 blocks): capped at 10 filled blocks even if progress exceeds 100%,
+  // floored at 0 filled blocks so REPT never gets a negative count.
+  sheet.getRange(2, progressBarCol).setFormula(
+    '=ARRAYFORMULA(IF(' + namaLetter + '2:' + namaLetter + '="","",' +
+    'REPT("█",MIN(10,ROUND(' + progressLetter + '2:' + progressLetter + '/10)))&' +
+    'REPT("░",MAX(0,10-ROUND(' + progressLetter + '2:' + progressLetter + '/10)))))'
   );
   setDropdown_(sheet, statusCol, numRows, ['Berjalan', 'Tercapai', 'Dibatalkan']);
 }
