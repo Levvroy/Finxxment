@@ -1,0 +1,294 @@
+{
+  "name": "Finxxment - 03 Scheduled Report",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyWeek",
+              "weekday": 1,
+              "hour": 8,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "e4394351-8c85-4e8f-b54e-da3a2b268cd4",
+      "name": "Cron: Weekly",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Fires every Monday 08:00. Feeds the same downstream chain as the monthly trigger via a Merge node."
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyMonth",
+              "dayOfMonth": 1,
+              "hour": 8,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "5eea585d-4f7a-40a1-aaa4-f32addf52ddb",
+      "name": "Cron: Monthly",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "id": "6e17b65e-980e-418e-b59f-aa7277c46471",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        250,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "281e08b1-83c3-422a-b8f3-a2242e4351c1",
+              "name": "SPREADSHEET_ID",
+              "value": "REPLACE_ME_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "16992f0f-c943-48de-948c-20f732816fbd",
+              "name": "OWNER_CHAT_ID",
+              "value": "REPLACE_ME_OWNER_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "73ab7532-e455-4ec9-89f4-7828674e02b9",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        500,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "1808fb26-11c0-4334-afb4-0248cadb73d1",
+      "name": "Sheets: Read Period Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        750,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst now = new Date();\nconst lastMonthRef = new Date(now.getFullYear(), now.getMonth() - 1, 1);\n// Both month AND year must match - month alone would also match this calendar month\n// (or last month's) from every earlier year once more than ~12 months of history exist.\nconst thisMonth = rows.filter(r => { const d = new Date(r['Tanggal Transaksi']); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });\nconst lastMonth = rows.filter(r => { const d = new Date(r['Tanggal Transaksi']); return d.getMonth() === lastMonthRef.getMonth() && d.getFullYear() === lastMonthRef.getFullYear(); });\nfunction sum(list, jenis) { return list.filter(r => r.Jenis === jenis).reduce((s, r) => s + Number(r.Nominal || 0), 0); }\nconst byKategori = {};\nthisMonth.filter(r => r.Jenis === 'Keluar').forEach(r => { byKategori[r.Kategori] = (byKategori[r.Kategori] || 0) + Number(r.Nominal || 0); });\nconst topKategori = Object.entries(byKategori).sort((a,b) => b[1]-a[1]).slice(0,5).map(([kategori,total]) => ({kategori, total}));\nconst dayOfMonth = now.getDate();\nconst daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();\nconst totalKeluar = sum(thisMonth, 'Keluar');\nconst burnRateHarian = Math.round(totalKeluar / dayOfMonth);\nreturn [{ json: {\n  periode: 'bulanan',\n  total_masuk: sum(thisMonth, 'Masuk'),\n  total_keluar: totalKeluar,\n  total_masuk_periode_lalu: sum(lastMonth, 'Masuk'),\n  total_keluar_periode_lalu: sum(lastMonth, 'Keluar'),\n  top_kategori: topKategori,\n  burn_rate_harian: burnRateHarian,\n  proyeksi_akhir_bulan: burnRateHarian * daysInMonth\n}}];\n"
+      },
+      "id": "9cb07dc7-2b25-4739-ba37-5fbc1859a09c",
+      "name": "Code: Aggregate + Insight Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_INSIGHT_PROMPT + \"\\n\\nInput: \" + JSON.stringify($json) } ] } ] } }}",
+        "options": {}
+      },
+      "id": "300eb7d8-272b-472c-b1b8-4122b568eb9f",
+      "name": "Gemini: Generate Insight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1250,
+        100
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Gemini API"
+        }
+      },
+      "notes": "Prompt sourced from n8n/prompts/gemini-scheduled-insight.md."
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const raw = $input.first().json;\nconst text = raw.candidates ? raw.candidates[0].content.parts[0].text : 'Laporan bulanan tidak tersedia (Gemini error).';\nreturn [{ json: { insightText: text } }];\n"
+      },
+      "id": "bd7e9428-6696-4e3b-9e59-2aad3ba1d9cc",
+      "name": "Code: Extract Insight Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "={{$json.insightText}}",
+        "additionalFields": {}
+      },
+      "id": "8a468b3f-e38c-4d49-b3f0-e64f71534a9f",
+      "name": "Telegram: Send Scheduled Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1750,
+        100
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron: Weekly": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron: Monthly": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Read Period Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Read Period Data": {
+      "main": [
+        [
+          {
+            "node": "Code: Aggregate + Insight Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Aggregate + Insight Data": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Generate Insight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Generate Insight": {
+      "main": [
+        [
+          {
+            "node": "Code: Extract Insight Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Extract Insight Text": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Scheduled Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "finxxment-03-scheduled-report",
+  "tags": []
+}

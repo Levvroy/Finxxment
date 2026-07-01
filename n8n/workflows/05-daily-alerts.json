@@ -1,0 +1,223 @@
+{
+  "name": "Finxxment - 05 Daily Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 20,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "f758c217-43af-42fc-be3a-4724c88dc83c",
+      "name": "Cron: Daily Alerts",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Fires daily at 20:00, after apps-script/90-triggers.gs's own 06:00 Dashboard refresh trigger has already run for the day, so budget/hutang numbers are fresh."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "27d13423-a4c3-43ab-b8a1-3ccc36a0dbaa",
+              "name": "OWNER_CHAT_ID",
+              "value": "REPLACE_ME_OWNER_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "7b4f5094-9ec8-4005-950a-50ba2ca6286c",
+              "name": "WEBAPP_URL",
+              "value": "REPLACE_ME_APPS_SCRIPT_WEBAPP_URL",
+              "type": "string"
+            },
+            {
+              "id": "89c0fb58-ede1-4b37-b331-0e8e5136990f",
+              "name": "WEBAPP_SECRET",
+              "value": "REPLACE_ME_APPS_SCRIPT_SHARED_SECRET",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "3e2d61f1-a3fc-45e2-85f1-84d4549af18a",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        250,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Config\"].json.WEBAPP_URL}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "dailyAlerts"
+            },
+            {
+              "name": "secret",
+              "value": "={{$node[\"Config\"].json.WEBAPP_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "57b004fa-c118-41ae-9e6e-1f065fdb40f3",
+      "name": "HTTP: Daily Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        0
+      ],
+      "notes": "Calls apps-script/40-webhook-api.gs action=dailyAlerts, which combines every budgeted category already at/over its threshold this month with any overdue Hutang Piutang entries."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ace9a728-5608-406d-9874-f9dd7a94e71b",
+              "leftValue": "={{$json.hasAlerts}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f24412a0-966f-4683-8cd3-56a0d872a23e",
+      "name": "IF Has Alerts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        750,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const d = $input.first().json;\nconst lines = [];\nif (d.budgetAlerts && d.budgetAlerts.length) {\n  lines.push('Budget:');\n  d.budgetAlerts.forEach(function (b) {\n    lines.push((b.level === 'over' ? '\\ud83d\\udea8 ' : '\\u26a0\\ufe0f ') + b.kategori + ': ' + b.percentUsed + '% (Rp' + b.actual + ' / Rp' + b.budget + ')');\n  });\n}\nif (d.overdueHutangPiutang && d.overdueHutangPiutang.length) {\n  lines.push('');\n  lines.push('Jatuh tempo lewat:');\n  d.overdueHutangPiutang.forEach(function (o) {\n    lines.push('- ' + o.nama + ' (' + o.arah + ') Rp' + o.nominal + ', jatuh tempo ' + o.jatuhTempo);\n  });\n}\nreturn [{ json: { text: '\\ud83d\\udcca Peringatan harian finxxment\\n\\n' + lines.join('\\n') } }];\n"
+      },
+      "id": "74d94b58-d242-4010-b1eb-34b8d894c88c",
+      "name": "Code: Format Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "={{$json.text}}",
+        "additionalFields": {}
+      },
+      "id": "39fcd38a-2b64-4789-985a-7419969f380a",
+      "name": "Telegram: Send Daily Alerts",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1250,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron: Daily Alerts": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Daily Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Daily Alerts": {
+      "main": [
+        [
+          {
+            "node": "IF Has Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Alerts": {
+      "main": [
+        [
+          {
+            "node": "Code: Format Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Format Alerts": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Daily Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "finxxment-05-daily-alerts",
+  "tags": []
+}

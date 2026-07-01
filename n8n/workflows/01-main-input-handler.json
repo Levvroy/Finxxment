@@ -1,0 +1,2726 @@
+{
+  "name": "Finxxment - 01 Main Input Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "11068205-4a7a-414f-b370-f7225d149938",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      },
+      "notes": "Fires on every incoming Telegram message. See config/env.example for credential name."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b512bb3a-1af6-4910-b882-42ebebc92ccc",
+              "name": "OWNER_CHAT_ID",
+              "value": "REPLACE_ME_OWNER_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "492632ea-4c8d-410a-b530-bf08f173747f",
+              "name": "SPREADSHEET_ID",
+              "value": "REPLACE_ME_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "880cef4f-e680-4497-aaae-6983d9a5ef12",
+              "name": "DRIVE_PROOF_FOLDER_ID",
+              "value": "REPLACE_ME_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "66457e6f-8a95-406c-bebe-1ffbd05ae874",
+              "name": "WEBAPP_URL",
+              "value": "REPLACE_ME_APPS_SCRIPT_WEBAPP_URL",
+              "type": "string"
+            },
+            {
+              "id": "a8f5b20b-5ee1-4cd7-9db6-081292414df8",
+              "name": "WEBAPP_SECRET",
+              "value": "REPLACE_ME_APPS_SCRIPT_SHARED_SECRET",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "417ea168-7c02-4693-8f9c-06a26d176b58",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        250,
+        600
+      ],
+      "notes": "Single place to fill in every placeholder from config/env.example. All downstream nodes reference these via $node[\"Config\"].json.*"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "bdf7a9ad-cdc0-48a6-84f3-0810056a1ae7",
+              "leftValue": "={{$json.message.chat.id}}",
+              "rightValue": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "af1643d4-d3ae-4c98-aaaa-0ae9466d5683",
+      "name": "IF Is Owner",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        500,
+        600
+      ],
+      "notes": "Security: only the whitelisted owner chat id may input data. Non-owner messages are silently ignored."
+    },
+    {
+      "parameters": {},
+      "id": "9444ea7e-1667-4ad6-90ed-f604e19f1367",
+      "name": "Ignore Non-Owner",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        750,
+        800
+      ],
+      "notes": "Dead-end for non-whitelisted chat ids. Intentionally does nothing (no reply), per spec section 8 security notes."
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Config\"].json.WEBAPP_URL}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "pendingLookup"
+            },
+            {
+              "name": "chatId",
+              "value": "={{$json.message.chat.id}}"
+            },
+            {
+              "name": "secret",
+              "value": "={{$node[\"Config\"].json.WEBAPP_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fa7b1819-730f-4583-a047-517939e27742",
+      "name": "HTTP Request: Check Pending",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        750,
+        600
+      ],
+      "notes": "Calls apps-script/40-webhook-api.gs doGet?action=pendingLookup to check the 'Pending Transaksi' sheet for an open entry for this chat id. See docs/04-mismatch-clarification-design.md."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "11a51f05-6dae-4514-8864-1ad3e77d3b79",
+              "leftValue": "={{$json.status}}",
+              "rightValue": "Waiting",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4b1b368c-f886-4936-81ce-52b4bc91248d",
+      "name": "IF Has Pending",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_ME_WORKFLOW_02_ID",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "value": {
+            "chatId": "={{$json.message.chat.id}}",
+            "incomingText": "={{$json.message.text}}",
+            "pendingRow": "={{$json}}"
+          }
+        }
+      },
+      "id": "8246888b-d1e4-4c72-bbdf-d52ac9ce0c9c",
+      "name": "Execute Workflow: Clarification Handler",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1250,
+        800
+      ],
+      "notes": "Hands off to n8n/workflows/02-clarification-handler.json. Replace workflowId after importing workflow 02 and copying its id."
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/laporan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "laporan"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/saldo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "saldo"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/undo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "undo"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/edit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/kategori",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "kategori"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/help",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "help"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/hutang",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hutang"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/goal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "goal"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.message.text}}",
+                    "rightValue": "^/cari",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cari"
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {}
+      },
+      "id": "80ef6b82-78f7-432a-8134-ab9330623d96",
+      "name": "Switch: Route Message",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1250,
+        600
+      ],
+      "notes": "Fallback output (no rule matched, index 9) = plain transaction text/photo input. Nine named outputs for the /commands (laporan, saldo, undo, edit, kategori, help, hutang, goal, cari)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "2d8ab729-10e9-42c6-88c3-f0c4bf1cd272",
+              "leftValue": "={{$json.message.photo}}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "90e158a4-c09f-46af-9fd9-1e2271fadf0d",
+      "name": "IF Has Photo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_TEXT_PROMPT + \"\\n\\nToday: \" + $today + \"\\n\\nUser message: \" + $json.message.text } ] } ] } }}",
+        "options": {}
+      },
+      "id": "6075a075-c1e7-43b1-a59e-eb41912a9e08",
+      "name": "Gemini: Text Extraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1750,
+        1000
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Gemini API"
+        }
+      },
+      "notes": "Prompt text sourced from n8n/prompts/gemini-text-extraction.md — paste its content into a Config field (e.g. GEMINI_TEXT_PROMPT) or directly into this node. Keep in sync manually if edited."
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Parses Gemini's JSON array response, strips markdown fences if present,\n// and applies a fallback shorthand-nominal normalizer (50rb/50k/1jt) in case\n// the model missed it. Returns one n8n item per transaction so downstream\n// nodes naturally iterate over multi-transaction messages.\nfunction normalizeNominal(raw) {\n  if (typeof raw === 'number') return raw;\n  if (!raw) return 0;\n  const s = String(raw).toLowerCase().replace(/[^0-9a-z.,]/g, '');\n  const m = s.match(/([0-9.,]+)(rb|ribu|k|jt|juta)?/);\n  if (!m) return 0;\n  let num = parseFloat(m[1].replace(',', '.'));\n  if (m[2] === 'rb' || m[2] === 'ribu' || m[2] === 'k') num *= 1000;\n  if (m[2] === 'jt' || m[2] === 'juta') num *= 1000000;\n  return Math.round(num);\n}\n\nconst raw = $input.first().json;\nlet text = raw.candidates ? raw.candidates[0].content.parts[0].text : JSON.stringify(raw);\ntext = text.replace(/```json|```/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  return [{ json: { geminiError: true, rawText: $('IF Has Photo').first().json.message.text } }];\n}\nif (!Array.isArray(parsed)) parsed = [parsed];\nreturn parsed.map(tx => ({ json: { ...tx, nominal: normalizeNominal(tx.nominal), chatId: $('IF Has Photo').first().json.message.chat.id, hasPhoto: !!($('IF Has Photo').first().json.message.photo) } }));\n"
+      },
+      "id": "6a31ad84-57fa-4684-b2fb-0be26ff55cfb",
+      "name": "Code: Parse & Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        1000
+      ],
+      "notes": "Sets geminiError:true on parse failure so the fallback branch below can catch it and never lose the raw message."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "5611015a-be25-4ce7-8426-469b71283d5e",
+              "leftValue": "={{$json.geminiError}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7107a0cf-8671-4994-8e76-09862ad04287",
+      "name": "IF Gemini Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2250,
+        1150
+      ],
+      "notes": "Catches Gemini API failure/timeout/unparseable response. Never drop the message — fall back to a manual-review row."
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json;\nreturn [{ json: {\n  ID: $itemIndex + '-' + Date.now(),\n  'Timestamp Input': new Date().toISOString(),\n  'Tanggal Transaksi': new Date().toISOString().slice(0,10),\n  Jenis: 'Keluar',\n  Nominal: 0,\n  Kategori: 'Lain-lain',\n  'Sub-kategori': '',\n  'Tujuan/Merchant': item.rawText || '(raw text unavailable)',\n  'Sumber Dana': '',\n  'Nama Rekening/Wallet': '',\n  Catatan: 'Gemini API gagal/timeout - butuh review manual',\n  'Bukti (link)': '',\n  'Status Verifikasi': 'Perlu Review Manual',\n  'Confidence AI': 'n/a - API error',\n  'Sumber Input': 'Telegram Text'\n}}];\n"
+      },
+      "id": "06843a45-bb49-4c82-863a-021ca62d2c1e",
+      "name": "Code: Build Fallback Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2500,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "bc33a5e1-f678-4034-b265-e9455396e43d",
+      "name": "Sheets: Append Fallback Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2750,
+        1300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "⚠️ Gagal memproses otomatis (Gemini error). Pesan mentah sudah disimpan dengan status \"Perlu Review Manual\" — silakan cek & edit manual di Sheets.",
+        "additionalFields": {}
+      },
+      "id": "1121abc9-ea1a-4bb5-a522-79bbbaccf09e",
+      "name": "Telegram: Send Fallback Notice",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3000,
+        1300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "a2f6b6c6-79ab-4fcc-ba48-330568847a9a",
+              "leftValue": "={{$json.confidence}}",
+              "rightValue": "low",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "050de157-1b30-4410-84ac-ed627df3d641",
+      "name": "IF Confidence Low",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2500,
+        950
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "05fc0fed-46a1-451f-8a34-a23e9397c9bb",
+      "name": "Sheets: Append Pending (Low Confidence)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2750,
+        850
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      },
+      "notes": "Writes Chat ID, Type=low-confidence, Raw Payload=JSON.stringify(item), Status=Waiting. See docs/04-mismatch-clarification-design.md."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "Datanya kurang jelas nih 🤔 {{$json.catatan || 'Boleh dilengkapi lagi?'}} (misal: nominalnya berapa / kategori apa)",
+        "additionalFields": {}
+      },
+      "id": "0924ce40-3a43-4860-b70a-cc5d74b770fc",
+      "name": "Telegram: Ask Clarification (Low Confidence)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3000,
+        850
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "b4bc0df2-d353-4981-9c99-950a88194216",
+              "leftValue": "={{$json.hasPhoto}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "571e5800-19fd-4021-b65a-271563993274",
+      "name": "IF Has Photo (2)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2750,
+        1000
+      ],
+      "notes": "Re-checks photo presence for items that passed the confidence gate, to route into the Gemini Vision compare-and-verify path."
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{$('Switch: Route Message').first().json.message.photo.last().file_id}}"
+      },
+      "id": "aaa7259a-9541-40eb-949c-28abeb7c5e4c",
+      "name": "Telegram: Get File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3000,
+        1050
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_VISION_PROMPT }, { \"inline_data\": { \"mime_type\": \"image/jpeg\", \"data\": $binary.data.toString('base64') } } ] } ] } }}",
+        "options": {}
+      },
+      "id": "3a6f4e2b-126a-4058-9e19-a68e3a48256a",
+      "name": "Gemini: Vision Extraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        3250,
+        1050
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Gemini API"
+        }
+      },
+      "notes": "Prompt sourced from n8n/prompts/gemini-vision-extraction.md."
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Tolerance values mirrored from config/mismatch-tolerance.json - keep in sync.\nconst ABS_TOLERANCE = 2000;\nconst PCT_TOLERANCE = 0.02;\nconst DATE_DIFF_WARN_DAYS = 1;\n\nconst textTx = $('IF Has Photo (2)').first().json;\nconst visionRaw = $input.first().json;\nlet vision;\ntry {\n  let t = (visionRaw.candidates ? visionRaw.candidates[0].content.parts[0].text : '{}').replace(/```json|```/g, '').trim();\n  vision = JSON.parse(t);\n} catch (e) {\n  vision = { nominal_dari_bukti: 0, tanggal_dari_bukti: '', merchant_dari_bukti: '', metode_dari_bukti: '' };\n}\n\nconst diff = Math.abs((textTx.nominal || 0) - (vision.nominal_dari_bukti || 0));\nconst pct = textTx.nominal ? diff / textTx.nominal : 1;\nconst nominalMismatch = diff > ABS_TOLERANCE && pct > PCT_TOLERANCE;\n\nlet dateDiffDays = 0;\nif (textTx.tanggal && vision.tanggal_dari_bukti) {\n  dateDiffDays = Math.abs((new Date(textTx.tanggal) - new Date(vision.tanggal_dari_bukti)) / 86400000);\n}\nconst dateWarning = !nominalMismatch && dateDiffDays > DATE_DIFF_WARN_DAYS;\n\nlet status = 'ok';\nif (nominalMismatch) status = 'mismatch';\nelse if (dateWarning) status = 'date-warning';\n\nreturn [{ json: { ...textTx, vision, status, diff, dateDiffDays } }];\n"
+      },
+      "id": "5f1aed08-7715-4347-baa6-ceeb38224de3",
+      "name": "Code: Compare Text vs Vision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3500,
+        1050
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "106f25c7-4eef-4752-a288-8d6b420402f1",
+              "leftValue": "={{$json.status}}",
+              "rightValue": "mismatch",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e99d0340-d81b-4978-a3ff-b7da55f51602",
+      "name": "IF Mismatch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3750,
+        1050
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "a3af7a17-e5b6-4ae7-b21d-b4466fbfdda3",
+      "name": "Sheets: Append Pending (Mismatch)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        4000,
+        950
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      },
+      "notes": "Type=mismatch. No Sheets write to Transaksi happens until the user resolves this via workflow 02."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "Nominal di teks (Rp{{$json.nominal}}) beda sama di bukti (Rp{{$json.vision.nominal_dari_bukti}}) nih. Mana yang bener? Balas dengan nominal yang benar, atau ketik 'teks'/'bukti'.",
+        "additionalFields": {}
+      },
+      "id": "ffc549fb-d7de-43ac-8404-8f584d3c2fcf",
+      "name": "Telegram: Ask Clarification (Mismatch)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4250,
+        950
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bef82703-0e43-435e-bd2c-5e965451e7a0",
+              "name": "catatan",
+              "value": "={{$json.catatan}} [Peringatan: tanggal bukti berbeda {{$json.dateDiffDays}} hari]",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "includeOtherFields": true
+        }
+      },
+      "id": "92630b3e-4ea7-473b-b06c-f83a049ab9f8",
+      "name": "Set: Annotate Date Warning",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        4000,
+        1150
+      ],
+      "notes": "Nominal matched but date differs slightly - per spec, proceed but annotate rather than blocking."
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "name": "={{$json.tujuan}}-{{$now}}.jpg",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.DRIVE_PROOF_FOLDER_ID}}",
+          "mode": "id"
+        }
+      },
+      "id": "2de29ca4-c80b-427b-9b7f-60583807bf71",
+      "name": "Google Drive: Upload Photo",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        4250,
+        1200
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Drive"
+        }
+      },
+      "notes": "Uploads only when a photo was present and verification did not stop the flow. Folder must be private, per spec section 8."
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json;\nconst drive = $input.first().binary ? $input.first().json : null;\nreturn [{ json: {\n  ID: (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()),\n  'Timestamp Input': new Date().toISOString(),\n  'Tanggal Transaksi': item.tanggal,\n  Jenis: item.jenis === 'masuk' ? 'Masuk' : 'Keluar',\n  Nominal: item.nominal,\n  Kategori: item.kategori,\n  'Sub-kategori': item.sub_kategori || '',\n  'Tujuan/Merchant': item.tujuan,\n  'Sumber Dana': item.sumber_dana,\n  'Nama Rekening/Wallet': item.nama_rekening || '',\n  Catatan: item.catatan || '',\n  'Bukti (link)': item.webViewLink || '',\n  'Status Verifikasi': item.hasPhoto ? (item.status === 'date-warning' ? 'Mismatch-Resolved' : 'Verified') : 'Unverified',\n  'Confidence AI': item.confidence,\n  'Sumber Input': item.hasPhoto ? 'Telegram Text+Foto' : 'Telegram Text'\n}}];\n"
+      },
+      "id": "0c7ac428-c095-4f60-9c7b-1c48bdd920ae",
+      "name": "Code: Build Row Object",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4500,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "e8aabe38-5da9-4d98-a840-b807e5358b1f",
+      "name": "Google Sheets: Append Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        4750,
+        1200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "✅ Tercatat: Rp{{$json.Nominal}} - {{$json['Tujuan/Merchant']}} - {{$json['Sumber Dana']}} - {{$json['Tanggal Transaksi']}}",
+        "additionalFields": {}
+      },
+      "id": "14522f7f-6dd1-4fa6-9d55-f15b94278a21",
+      "name": "Telegram: Send Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5000,
+        1200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Config\"].json.WEBAPP_URL}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "budgetCheck"
+            },
+            {
+              "name": "kategori",
+              "value": "={{$json.Kategori}}"
+            },
+            {
+              "name": "secret",
+              "value": "={{$node[\"Config\"].json.WEBAPP_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "39594efc-4a03-45e2-8f18-f1db6917cb29",
+      "name": "HTTP: Budget Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        5000,
+        1350
+      ],
+      "notes": "Calls apps-script/40-webhook-api.gs action=budgetCheck right after a transaction is appended, so the user is warned the moment a category crosses 80%/100% of its monthly budget rather than only on /laporan."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "03fd4ec1-5e3c-4703-a83e-db0d70d58709",
+              "leftValue": "={{$json.alert}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ec766449-8f35-46c8-8806-08b31032d875",
+      "name": "IF Budget Alert",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5250,
+        1350
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "{{$json.level === 'over' ? '🚨' : '⚠️'}} Budget {{$json.kategori}} sudah {{$json.percentUsed}}% terpakai (Rp{{$json.actual}} dari Rp{{$json.budget}}).",
+        "additionalFields": {}
+      },
+      "id": "21bb99ac-b09e-4d6b-a910-2fc97dfa05b2",
+      "name": "Telegram: Send Budget Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5500,
+        1350
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const text = $json.message.text.toLowerCase();\nlet period = 'bulan_ini';\nif (text.includes('minggu')) period = 'minggu_ini';\nif (text.includes('bulan lalu')) period = 'bulan_lalu';\nreturn [{ json: { period, chatId: $json.message.chat.id } }];\n"
+      },
+      "id": "80707760-a882-4c62-adbd-08adedef6392",
+      "name": "Code: Parse Period Arg",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        1500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "9b6cdff1-4020-495b-a693-005731ec192f",
+      "name": "Sheets: Read Transaksi (Laporan)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1750,
+        1500
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      },
+      "notes": "Reads the full ledger; filtering by period happens in the next Code node since n8n's Sheets node filtering is limited."
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const period = $('Code: Parse Period Arg').first().json.period;\nconst rows = $input.all().map(i => i.json);\nconst now = new Date();\nfunction inPeriod(dateStr) {\n  const d = new Date(dateStr);\n  if (period === 'minggu_ini') { const diff = (now - d) / 86400000; return diff >= 0 && diff <= 7; }\n  if (period === 'bulan_lalu') { const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear(); }\n  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();\n}\nconst filtered = rows.filter(r => inPeriod(r['Tanggal Transaksi']));\nconst totalMasuk = filtered.filter(r => r.Jenis === 'Masuk').reduce((s, r) => s + Number(r.Nominal || 0), 0);\nconst totalKeluar = filtered.filter(r => r.Jenis === 'Keluar').reduce((s, r) => s + Number(r.Nominal || 0), 0);\nconst byKategori = {};\nfiltered.filter(r => r.Jenis === 'Keluar').forEach(r => { byKategori[r.Kategori] = (byKategori[r.Kategori] || 0) + Number(r.Nominal || 0); });\nconst topKategori = Object.entries(byKategori).sort((a, b) => b[1] - a[1]).slice(0, 5);\nreturn [{ json: { period, totalMasuk, totalKeluar, topKategori } }];\n"
+      },
+      "id": "61b4436c-6ec4-4983-be4a-c068b17390f8",
+      "name": "Code: Aggregate Laporan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        1500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://quickchart.io/chart",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "c",
+              "value": "={{ JSON.stringify({type:'pie', data:{labels: $json.topKategori.map(k=>k[0]), datasets:[{data: $json.topKategori.map(k=>k[1])}]}}) }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "eb6bd4ac-2731-4ec1-8d56-588f77e2f516",
+      "name": "HTTP: QuickChart (Laporan)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2250,
+        1500
+      ],
+      "notes": "Optional chart image for the /laporan reply, per spec section 5 step 4c."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "📊 Laporan {{$('Code: Aggregate Laporan').first().json.period}}\\nMasuk: Rp{{$('Code: Aggregate Laporan').first().json.totalMasuk}}\\nKeluar: Rp{{$('Code: Aggregate Laporan').first().json.totalKeluar}}\\nTop kategori: {{$('Code: Aggregate Laporan').first().json.topKategori.map(k => k[0] + ' (Rp' + k[1] + ')').join(', ')}}",
+        "additionalFields": {}
+      },
+      "id": "d0b09ea7-5571-4600-8cd1-3d4e4bd2db37",
+      "name": "Telegram: Send Laporan Text",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2500,
+        1450
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "operation": "sendPhoto",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "id": "b7bec398-6ac7-4861-99c5-f3b9158a2f64",
+      "name": "Telegram: Send Laporan Chart",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2750,
+        1550
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Config\"].json.WEBAPP_URL}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "saldo"
+            },
+            {
+              "name": "secret",
+              "value": "={{$node[\"Config\"].json.WEBAPP_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "570ed48f-31da-4ac9-9ccd-34f562ab99ea",
+      "name": "HTTP: Apps Script Saldo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1500,
+        1800
+      ],
+      "notes": "Calls apps-script/40-webhook-api.gs so balance math lives in one place (calculateSaldo in apps-script/20-saldo-burnrate.gs)."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "💰 Saldo per sumber dana:\\n{{ Object.entries($json.saldoPerSumberDana || {}).map(([k,v]) => k + ': Rp' + v).join('\\n') }}",
+        "additionalFields": {}
+      },
+      "id": "93d1cf22-55db-436d-b6bc-c6b9d98dbdc3",
+      "name": "Telegram: Send Saldo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1750,
+        1800
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "de04d4a3-f6da-4a7a-b367-aef43b9b74d3",
+      "name": "Sheets: Find Last Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1500,
+        2050
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      },
+      "notes": "Reads all rows; a Code node (not drawn separately here) picks the last row - see n8n/README.md for the exact expression to select $input.all().pop()."
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "startIndex": "={{$json.row_number - 1}}",
+        "numberOfRows": 1
+      },
+      "id": "1e2b042b-b100-4e66-b2f7-ceb4fb597ca6",
+      "name": "Sheets: Delete Last Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1750,
+        2050
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "🗑️ Transaksi terakhir dihapus: Rp{{$json.Nominal}} - {{$json['Tujuan/Merchant']}}",
+        "additionalFields": {}
+      },
+      "id": "9ecc1744-3eaf-476b-88a7-e80c577a96df",
+      "name": "Telegram: Confirm Undo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2000,
+        2050
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// '/edit <id> <field>=<value> [<field2>=<value2> ...]'\nconst parts = $json.message.text.trim().split(/\\s+/);\nconst id = parts[1];\nconst fields = {};\nparts.slice(2).forEach(p => { const [k, v] = p.split('='); if (k && v) fields[k] = v; });\nreturn [{ json: { id, fields, hasFields: Object.keys(fields).length > 0, chatId: $json.message.chat.id } }];\n"
+      },
+      "id": "d6adf1a9-abdb-4460-8716-a9455d601d92",
+      "name": "Code: Parse Edit Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        2300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ac5cbf5d-0485-4185-8b09-ad1b0637cfa6",
+              "leftValue": "={{$json.hasFields}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dfe17fd3-b368-4ff3-a3b3-235f7c946f20",
+      "name": "IF Edit Has Fields",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1750,
+        2300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "ID",
+              "lookupValue": "={{$json.id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d6f5ff52-2b66-4902-a33b-d74148954af0",
+      "name": "Sheets: Find Row By ID",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2000,
+        2200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Transaksi",
+          "mode": "name"
+        },
+        "columns": {
+          "matchingColumns": [
+            "ID"
+          ],
+          "value": "={{ Object.assign({ID: $('Code: Parse Edit Args').first().json.id}, $('Code: Parse Edit Args').first().json.fields) }}"
+        },
+        "options": {}
+      },
+      "id": "1d82a7b5-ac2e-403c-9017-217397255fad",
+      "name": "Sheets: Update Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2250,
+        2200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "✏️ Transaksi {{$('Code: Parse Edit Args').first().json.id}} diperbarui.",
+        "additionalFields": {}
+      },
+      "id": "f4cc8c1e-ae15-428d-8820-03820f21d710",
+      "name": "Telegram: Confirm Edit",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2500,
+        2200
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Transaksi",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "c6759a2f-7106-4eda-b3ae-9f95ff48be28",
+      "name": "Sheets: Append Pending (Edit Needs Field)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2000,
+        2400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      },
+      "notes": "Type=edit-needs-field. Handled by workflow 02 once the user replies with field=value."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "Mau ubah apa untuk transaksi {{$('Code: Parse Edit Args').first().json.id}}? Balas dengan format field=value (misal: nominal=60000).",
+        "additionalFields": {}
+      },
+      "id": "b1b4e2a2-b363-4831-95de-cc380063a82f",
+      "name": "Telegram: Ask What To Edit",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2250,
+        2400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "📂 Kategori: Makan & Minum, Transportasi, Kos/Tempat Tinggal, Kuliah/Akademik, Produksi/Event, Peralatan, Hiburan/Hobi, Kopi/Espresso Setup, Kesehatan, Belanja Pribadi, Transfer/Pinjam, Tabungan/Investasi, Lain-lain.\\nSumber dana: Cash, QRIS, Debit, E-wallet, Transfer Bank, Kredit.",
+        "additionalFields": {}
+      },
+      "id": "61a62f27-298b-4344-bfcd-6297ca5e7b21",
+      "name": "Telegram: Send Kategori List",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1500,
+        2600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      },
+      "notes": "Static text mirrors config/categories.json and config/sumber-dana.json - update both if the lists change."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "🤖 finxxment bot\\nKetik transaksi natural, misal: 'keluar 50000 makan siang qris'. Bisa lampirkan foto bukti.\\nCommand: /laporan [periode], /saldo, /undo, /edit [id] [field=value], /kategori, /hutang [tambah|lunas ...], /goal [tambah ...], /cari <keyword>, /help",
+        "additionalFields": {}
+      },
+      "id": "29d6077f-e7f6-43b8-aec1-a27711d6ad7e",
+      "name": "Telegram: Send Help",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1500,
+        2800
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// '/hutang' (list), '/hutang tambah <piutang|utang> <nama> <nominal> [jatuh_tempo YYYY-MM-DD]',\n// '/hutang lunas <id>'\nconst parts = $json.message.text.trim().split(/\\s+/);\nconst sub = (parts[1] || 'list').toLowerCase();\nlet mode = 'list';\nlet arah = '', nama = '', nominal = 0, jatuhTempo = '', id = '';\nif (sub === 'tambah') {\n  mode = 'tambah';\n  arah = (parts[2] || '').toLowerCase() === 'utang' ? 'Utang' : 'Piutang';\n  nama = parts[3] || '';\n  nominal = parseInt((parts[4] || '0').replace(/[^0-9]/g, ''), 10) || 0;\n  jatuhTempo = parts[5] || '';\n} else if (sub === 'lunas') {\n  mode = 'lunas';\n  id = parts[2] || '';\n}\nreturn [{ json: { mode, arah, nama, nominal, jatuhTempo, id } }];\n"
+      },
+      "id": "6755595f-2b26-4877-a901-81d492fab458",
+      "name": "Code: Parse Hutang Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        3000
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.mode}}",
+                    "rightValue": "tambah",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "tambah"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.mode}}",
+                    "rightValue": "lunas",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "lunas"
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {}
+      },
+      "id": "0f50df81-4e39-463e-93a6-f4421f72a6d5",
+      "name": "Switch: Hutang Mode",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1750,
+        3000
+      ],
+      "notes": "Fallback (index 2) = plain '/hutang' list request."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Hutang Piutang",
+          "mode": "name"
+        },
+        "columns": {
+          "value": "={{ { ID: (crypto.randomUUID ? crypto.randomUUID() : Date.now()), Tanggal: $now.toISODate(), Arah: $json.arah, 'Nama Pihak': $json.nama, Nominal: $json.nominal, 'Jatuh Tempo': $json.jatuhTempo, Status: 'Belum Lunas', Catatan: '' } }}"
+        },
+        "options": {}
+      },
+      "id": "2f49ff12-2f69-4bcc-9efd-e29cca712bc5",
+      "name": "Sheets: Append Hutang Piutang",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2000,
+        2900
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "📝 Dicatat: {{$json.Arah}} {{$json['Nama Pihak']}} Rp{{$json.Nominal}}{{$json['Jatuh Tempo'] ? ' (jatuh tempo ' + $json['Jatuh Tempo'] + ')' : ''}}",
+        "additionalFields": {}
+      },
+      "id": "172638c0-7a87-4579-b9b2-852c6aa517b8",
+      "name": "Telegram: Confirm Hutang Added",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2250,
+        2900
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Hutang Piutang",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "ID",
+              "lookupValue": "={{$json.id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d35ee367-c3eb-4c81-bd51-6929de5dfdb5",
+      "name": "Sheets: Find Hutang By ID",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2000,
+        3100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Hutang Piutang",
+          "mode": "name"
+        },
+        "columns": {
+          "matchingColumns": [
+            "ID"
+          ],
+          "value": "={{ { ID: $json.ID, Status: 'Lunas' } }}"
+        },
+        "options": {}
+      },
+      "id": "25da6295-733e-4f0d-83df-77e86cc5deda",
+      "name": "Sheets: Mark Hutang Lunas",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2250,
+        3100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "✅ {{$json['Nama Pihak']}} - Rp{{$json.Nominal}} ditandai Lunas.",
+        "additionalFields": {}
+      },
+      "id": "ddc0f446-40a6-449a-91a9-a2c85c9d27e5",
+      "name": "Telegram: Confirm Hutang Lunas",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2500,
+        3100
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Config\"].json.WEBAPP_URL}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "hutangPiutang"
+            },
+            {
+              "name": "secret",
+              "value": "={{$node[\"Config\"].json.WEBAPP_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f9bb147b-dea0-4b13-9c11-ef307719fcff",
+      "name": "HTTP: Apps Script Hutang Piutang",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2000,
+        3300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "📒 Piutang (orang berhutang ke saya): Rp{{$json.totalPiutang}}\\nUtang (saya berhutang): Rp{{$json.totalUtang}}\\n{{ $json.overdue.length ? 'Jatuh tempo lewat: ' + $json.overdue.map(o => o.nama + ' Rp' + o.nominal).join(', ') : 'Tidak ada yang lewat jatuh tempo.' }}",
+        "additionalFields": {}
+      },
+      "id": "49f6a13c-ea19-47cd-a29b-8015ba2bc71a",
+      "name": "Telegram: Send Hutang Piutang",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2250,
+        3300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// '/goal' (list progress), '/goal tambah <nama> <target> [tanggal_target YYYY-MM-DD]'\nconst parts = $json.message.text.trim().split(/\\s+/);\nconst sub = (parts[1] || 'list').toLowerCase();\nlet mode = 'list';\nlet nama = '', target = 0, tanggalTarget = '';\nif (sub === 'tambah') {\n  mode = 'tambah';\n  nama = parts[2] || '';\n  target = parseInt((parts[3] || '0').replace(/[^0-9]/g, ''), 10) || 0;\n  tanggalTarget = parts[4] || '';\n}\nreturn [{ json: { mode, nama, target, tanggalTarget } }];\n"
+      },
+      "id": "d7fe6b73-e26e-4e5c-bf24-5367623e261c",
+      "name": "Code: Parse Goal Args",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        3500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "25cd8ab5-bc52-412f-881e-f471103db2a2",
+              "leftValue": "={{$json.mode}}",
+              "rightValue": "tambah",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f10d5c0a-0f8a-4cd0-aed3-3c04da8ddf26",
+      "name": "IF Goal Add",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1750,
+        3500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$node[\"Config\"].json.SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Tabungan Goals",
+          "mode": "name"
+        },
+        "columns": {
+          "value": "={{ { 'Nama Goal': $json.nama, 'Target Nominal': $json.target, 'Tanggal Target': $json.tanggalTarget, 'Sumber Dana': '', Status: 'Berjalan' } }}"
+        },
+        "options": {}
+      },
+      "id": "2ce9388d-acb1-4372-b511-a66cff918321",
+      "name": "Sheets: Append Goal",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2000,
+        3400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Google Sheets"
+        }
+      },
+      "notes": "'Nominal Terkumpul'/'Progress %' are left blank here - apps-script/00-bootstrap-provision.gs's ARRAYFORMULA in those columns fills them in automatically by summing Transaksi rows whose Sub-kategori matches this goal's Nama Goal."
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "🎯 Goal baru: {{$json['Nama Goal']}} - target Rp{{$json['Target Nominal']}}. Untuk nabung, catat transaksi dengan kategori 'Tabungan/Investasi' dan sub-kategori '{{$json['Nama Goal']}}'.",
+        "additionalFields": {}
+      },
+      "id": "4fb3682b-82d9-4b17-a806-d63091ed2c99",
+      "name": "Telegram: Confirm Goal Added",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2250,
+        3400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Config\"].json.WEBAPP_URL}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "savingsGoals"
+            },
+            {
+              "name": "secret",
+              "value": "={{$node[\"Config\"].json.WEBAPP_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "38e9d843-64cf-4231-bc90-065eeac88642",
+      "name": "HTTP: Apps Script Savings Goals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2000,
+        3600
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "🎯 Progress tabungan:\\n{{ $json.goals.map(g => g.nama + ': Rp' + g.terkumpul + ' / Rp' + g.target + ' (' + g.progress + '%) - ' + g.status).join('\\n') }}",
+        "additionalFields": {}
+      },
+      "id": "1342b61a-5c62-4d27-b8bc-69bfaf6fdfb4",
+      "name": "Telegram: Send Goal Progress",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2250,
+        3600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const keyword = $json.message.text.trim().split(/\\s+/).slice(1).join(' '); return [{ json: { keyword } }];"
+      },
+      "id": "412629a1-f5cf-442a-81cf-b212daa25801",
+      "name": "Code: Parse Cari Keyword",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        3800
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$node[\"Config\"].json.WEBAPP_URL}}",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "search"
+            },
+            {
+              "name": "keyword",
+              "value": "={{$json.keyword}}"
+            },
+            {
+              "name": "secret",
+              "value": "={{$node[\"Config\"].json.WEBAPP_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "75191c2a-cfa6-40c5-9da9-5893be6d36f8",
+      "name": "HTTP: Apps Script Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1750,
+        3800
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
+        "text": "🔍 Hasil pencarian ({{$json.results.length}}):\\n{{ $json.results.length ? $json.results.map(r => r['Tanggal Transaksi'] + ' - Rp' + r.Nominal + ' - ' + r['Tujuan/Merchant']).join('\\n') : 'Tidak ditemukan.' }}",
+        "additionalFields": {}
+      },
+      "id": "fdc6c9fb-ce19-42c8-adcc-ae09c769c7d6",
+      "name": "Telegram: Send Search Results",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2000,
+        3800
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER",
+          "name": "Finxxment Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "IF Is Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Is Owner": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Check Pending",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore Non-Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Check Pending": {
+      "main": [
+        [
+          {
+            "node": "IF Has Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Pending": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow: Clarification Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch: Route Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Route Message": {
+      "main": [
+        [
+          {
+            "node": "Code: Parse Period Arg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Apps Script Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets: Find Last Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Parse Edit Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram: Send Kategori List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram: Send Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Parse Hutang Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Parse Goal Args",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Parse Cari Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Has Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Photo": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Text Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini: Text Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Text Extraction": {
+      "main": [
+        [
+          {
+            "node": "Code: Parse & Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Parse & Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF Gemini Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Gemini Error": {
+      "main": [
+        [
+          {
+            "node": "Code: Build Fallback Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Confidence Low",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Build Fallback Row": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Append Fallback Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Append Fallback Row": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Fallback Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Confidence Low": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Append Pending (Low Confidence)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Has Photo (2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Append Pending (Low Confidence)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Ask Clarification (Low Confidence)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Photo (2)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Get File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code: Build Row Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Get File": {
+      "main": [
+        [
+          {
+            "node": "Gemini: Vision Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Vision Extraction": {
+      "main": [
+        [
+          {
+            "node": "Code: Compare Text vs Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Compare Text vs Vision": {
+      "main": [
+        [
+          {
+            "node": "IF Mismatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Mismatch": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Append Pending (Mismatch)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: Annotate Date Warning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Append Pending (Mismatch)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Ask Clarification (Mismatch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Annotate Date Warning": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Upload Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Upload Photo": {
+      "main": [
+        [
+          {
+            "node": "Code: Build Row Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Build Row Object": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets: Append Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets: Append Row": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Confirmation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP: Budget Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Budget Check": {
+      "main": [
+        [
+          {
+            "node": "IF Budget Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Budget Alert": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Budget Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Parse Period Arg": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Read Transaksi (Laporan)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Read Transaksi (Laporan)": {
+      "main": [
+        [
+          {
+            "node": "Code: Aggregate Laporan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Aggregate Laporan": {
+      "main": [
+        [
+          {
+            "node": "HTTP: QuickChart (Laporan)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: QuickChart (Laporan)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Laporan Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Send Laporan Text": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Laporan Chart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Apps Script Saldo": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Saldo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Find Last Row": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Delete Last Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Delete Last Row": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Undo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Parse Edit Args": {
+      "main": [
+        [
+          {
+            "node": "IF Edit Has Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Edit Has Fields": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Find Row By ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets: Append Pending (Edit Needs Field)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Find Row By ID": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Update Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Update Row": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Edit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Append Pending (Edit Needs Field)": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Ask What To Edit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Parse Hutang Args": {
+      "main": [
+        [
+          {
+            "node": "Switch: Hutang Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Hutang Mode": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Append Hutang Piutang",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets: Find Hutang By ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Apps Script Hutang Piutang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Append Hutang Piutang": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Hutang Added",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Find Hutang By ID": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Mark Hutang Lunas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Mark Hutang Lunas": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Hutang Lunas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Apps Script Hutang Piutang": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Hutang Piutang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Parse Goal Args": {
+      "main": [
+        [
+          {
+            "node": "IF Goal Add",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Goal Add": {
+      "main": [
+        [
+          {
+            "node": "Sheets: Append Goal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Apps Script Savings Goals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: Append Goal": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Confirm Goal Added",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Apps Script Savings Goals": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Goal Progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Parse Cari Keyword": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Apps Script Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Apps Script Search": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "finxxment-01-main-input-handler",
+  "tags": []
+}
