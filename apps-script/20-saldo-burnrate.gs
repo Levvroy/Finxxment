@@ -35,7 +35,7 @@ function calculateSaldo() {
 
 function writeSaldoToDashboard_(saldo) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
-  const startRow = 2;
+  const startRow = DASHBOARD_ROW_SALDO_HEADER + 1;
   const startCol = 1;
   sheet.getRange(startRow - 1, startCol, 1, 2).setValues([['Saldo per Sumber Dana', 'Nilai']]).setFontWeight('bold');
   const rows = Object.entries(saldo);
@@ -76,7 +76,7 @@ function calculateBurnRate() {
 
 function writeBurnRateToDashboard_(result) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
-  const startRow = 12;
+  const startRow = DASHBOARD_ROW_BURNRATE_HEADER;
   sheet.getRange(startRow, 1, 4, 2).setValues([
     ['Burn Rate', ''],
     ['Pengeluaran Bulan Ini (MTD)', result.totalKeluarMtd],

@@ -19,6 +19,8 @@ what to manually test after import.
    per the roadmap).
 4. **`04-export-xlsx-berkala.json`** — optional monthly `.xlsx` export sent as a Telegram
    document (Fase 5 / optional per the roadmap).
+5. **`05-daily-alerts.json`** — optional daily proactive check (budget categories already at/
+   over threshold, overdue Hutang Piutang entries), sent unprompted if there's anything to flag.
 
 ## Required credentials
 
@@ -65,3 +67,20 @@ at runtime. If you edit a prompt, remember to re-paste it into the corresponding
 - `/edit <id> field=value` writes directly; `/edit <id>` with no fields creates a
   `Pending Transaksi` row (type `edit-needs-field`) and asks what to change, resolved by
   workflow 02.
+
+## `/hutang`, `/goal`, `/cari`, and the proactive budget alert
+
+- `/hutang` (list), `/hutang tambah <piutang|utang> <nama> <nominal> [jatuh_tempo]`, and
+  `/hutang lunas <id>` manage the `Hutang Piutang` sheet directly from Telegram — see
+  `docs/01-sheets-schema.md`.
+- `/goal` (list progress) and `/goal tambah <nama> <target> [tanggal_target]` manage the
+  `Tabungan Goals` sheet. Progress isn't entered manually: log a normal transaction with
+  `Kategori = Tabungan/Investasi` and `Sub-kategori` matching the goal's exact name, and the
+  goal's `Nominal Terkumpul`/`Progress %` formulas (from `apps-script/00-bootstrap-provision.gs`)
+  pick it up automatically.
+- `/cari <keyword>` searches `Tujuan/Merchant` and `Catatan` on `Transaksi` via
+  `apps-script/40-webhook-api.gs`'s `search` action.
+- After every successful `Google Sheets: Append Row` in the transaction branch, a parallel
+  "HTTP: Budget Check" call warns the user immediately if that category just crossed 80%/100%
+  of its monthly budget, instead of only surfacing it on the next `/laporan` or Dashboard
+  refresh.

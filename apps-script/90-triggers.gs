@@ -12,6 +12,8 @@ function onOpen() {
     .addItem('Refresh Dashboard Now', 'refreshDashboard')
     .addItem('Recalculate Saldo', 'calculateSaldo')
     .addItem('Recalculate Budget vs Actual', 'calculateBudgetVsActual')
+    .addItem('Recalculate Hutang Piutang', 'calculateHutangPiutang')
+    .addItem('Recalculate Tabungan Goals', 'calculateSavingsGoals')
     .addSeparator()
     .addItem('Install Triggers', 'installTriggers')
     .addToUi();

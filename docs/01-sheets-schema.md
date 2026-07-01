@@ -70,10 +70,45 @@ independent n8n executions — see `docs/04-mismatch-clarification-design.md`.
 | Raw Payload | JSON string of the offending data |
 | Resolved | Y/N |
 
+## Sheet: `Hutang Piutang` (debt & receivable tracker)
+
+Added to give the `Transfer/Pinjam` category structured follow-up (who owes whom, due date,
+paid status), managed via the `/hutang` Telegram command.
+
+| Column | Notes |
+|---|---|
+| ID | Numeric/string id |
+| Tanggal | Date the entry was created |
+| Arah | dropdown: `Piutang` (orang lain berhutang ke saya) / `Utang` (saya berhutang) |
+| Nama Pihak | Who the debt/receivable is with |
+| Nominal | IDR amount |
+| Jatuh Tempo | Due date, optional |
+| Status | dropdown: `Belum Lunas` / `Lunas` |
+| Catatan | Free text |
+
+## Sheet: `Tabungan Goals` (savings goal tracker)
+
+Managed via the `/goal` command. A contribution toward a goal is just a normal `Transaksi` row
+with `Kategori = Tabungan/Investasi` and `Sub-kategori` set to the goal's exact name — progress
+is computed automatically, not entered by hand.
+
+| Column | Notes |
+|---|---|
+| Nama Goal | Must match the `Sub-kategori` used on contributing `Transaksi` rows |
+| Target Nominal | Goal amount (IDR) |
+| Tanggal Target | Optional target date |
+| Sumber Dana | Optional, which account the savings sit in |
+| Nominal Terkumpul | Formula (`SUMIFS` against `Transaksi`), auto-computed |
+| Progress % | Formula, auto-computed from Nominal Terkumpul / Target Nominal |
+| Status | dropdown: `Berjalan` / `Tercapai` (auto-set at 100% by `calculateSavingsGoals()`) / `Dibatalkan` |
+
 ## Sheet: `Dashboard` (generated, not manually edited)
 
-Not a fixed-column table — `apps-script/10-dashboard-charts.gs`, `20-saldo-burnrate.gs`, and
-`30-budget-vs-actual.gs` write summary blocks and charts into specific row ranges (saldo per
-sumber dana, burn rate, budget vs actual table) and five charts (cash flow, kategori pie,
-sumber dana pie, 6-month trend line, top-5 categories bar). Refreshed daily by a time-driven
-trigger, or on demand via the "Finxxment > Refresh Dashboard Now" menu item.
+Not a fixed-column table — `apps-script/10-dashboard-charts.gs`, `20-saldo-burnrate.gs`,
+`30-budget-vs-actual.gs`, `50-hutang-piutang.gs`, and `60-savings-goals.gs` write summary blocks
+into a fixed row layout (see `apps-script/05-dashboard-layout.gs`: saldo per sumber dana, burn
+rate, budget vs actual, hutang piutang totals, savings goals progress — all in columns A-E) and
+five charts (cash flow, kategori pie, sumber dana pie, 6-month trend line, top-5 categories
+bar), whose QUERY helper formulas live in a separate column band (from column O onward) so they
+never spill into the text blocks. Refreshed daily by a time-driven trigger, or on demand via the
+"Finxxment > Refresh Dashboard Now" menu item.

@@ -42,7 +42,7 @@ function calculateBudgetVsActual() {
 
 function writeBudgetComparisonToDashboard_(comparison) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
-  const startRow = 18;
+  const startRow = DASHBOARD_ROW_BUDGET_HEADER;
   const headers = ['Kategori', 'Budget', 'Actual', 'Delta', '% Terpakai'];
   sheet.getRange(startRow, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
   if (comparison.length > 0) {

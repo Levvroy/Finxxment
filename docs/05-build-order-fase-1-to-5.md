@@ -44,3 +44,31 @@ instead of activating everything at once.
 All artifacts for all 5 phases already exist in this repo — the checklist above is about
 *activation order* if you want to bring the system up gradually and test each layer before
 turning on the next, not about what still needs to be written.
+
+## Fase 6 — Extended Features (added after the original 5-phase roadmap)
+
+Not in the original brief, added because they close real gaps in day-to-day personal finance
+management once the core loop (Fase 1-5) is working:
+
+- [x] **Proactive budget alerts** — a parallel branch in
+  `n8n/workflows/01-main-input-handler.json` (nodes "HTTP: Budget Check" → "IF Budget Alert" →
+  "Telegram: Send Budget Alert") warns the user immediately when a transaction pushes a
+  category to 80%/100% of its monthly budget, instead of only showing up on `/laporan` or the
+  Dashboard.
+- [x] **Hutang/Piutang (debt & receivable) tracker** — `Hutang Piutang` sheet +
+  `/hutang [tambah|lunas ...]` command + `apps-script/50-hutang-piutang.gs`, giving the existing
+  `Transfer/Pinjam` category actual follow-up: who owes whom, due dates, paid status.
+- [x] **Savings goals** — `Tabungan Goals` sheet + `/goal [tambah ...]` command +
+  `apps-script/60-savings-goals.gs`; progress is derived automatically from `Transaksi` rows
+  (no manual "add contribution" bookkeeping).
+- [x] **Transaction search** — `/cari <keyword>` command, backed by the `search` action in
+  `apps-script/40-webhook-api.gs`.
+- [x] **Daily proactive alerts workflow** — `n8n/workflows/05-daily-alerts.json`, a Cron that
+  calls the `dailyAlerts` webhook action (every budget already over threshold + every overdue
+  Hutang Piutang entry) and messages the user only if there's something to flag.
+
+Test: create a low budget for a category and log a transaction that exceeds 80% of it — confirm
+an immediate Telegram warning; add a `/hutang tambah utang Budi 50000 2026-06-01` entry with a
+past due date and wait for (or manually trigger) workflow 05 — confirm it's flagged as overdue;
+create a `/goal tambah Kamera 5000000`, log a transaction with `Kategori=Tabungan/Investasi` and
+`Sub-kategori=Kamera`, then `/goal` — confirm progress reflects it.

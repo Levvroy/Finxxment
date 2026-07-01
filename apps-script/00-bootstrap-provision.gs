@@ -36,8 +36,16 @@ const LOG_ERROR_HEADERS = [
   'Timestamp', 'Chat ID', 'Workflow/Node', 'Error Type', 'Raw Payload', 'Resolved'
 ];
 
+const HUTANG_PIUTANG_HEADERS = [
+  'ID', 'Tanggal', 'Arah', 'Nama Pihak', 'Nominal', 'Jatuh Tempo', 'Status', 'Catatan'
+];
+
+const GOALS_HEADERS = [
+  'Nama Goal', 'Target Nominal', 'Tanggal Target', 'Sumber Dana', 'Nominal Terkumpul', 'Progress %', 'Status'
+];
+
 const PROVISION_MARKER_KEY = 'finxxment_provisioned_version';
-const PROVISION_VERSION = '1';
+const PROVISION_VERSION = '2';
 
 function provisionFinxxmentSheets() {
   const ss = SpreadsheetApp.getActive();
@@ -47,9 +55,13 @@ function provisionFinxxmentSheets() {
   ensureSheetWithHeaders_(ss, 'Saldo Awal', SALDO_AWAL_HEADERS);
   ensureSheetWithHeaders_(ss, 'Budget', BUDGET_HEADERS);
   ensureSheetWithHeaders_(ss, 'Log Error', LOG_ERROR_HEADERS);
+  ensureSheetWithHeaders_(ss, 'Hutang Piutang', HUTANG_PIUTANG_HEADERS);
+  ensureSheetWithHeaders_(ss, 'Tabungan Goals', GOALS_HEADERS);
   ensureSheetWithHeaders_(ss, 'Dashboard', []);
 
   applyTransaksiValidationAndFormulas_(ss.getSheetByName('Transaksi'));
+  applyHutangPiutangValidation_(ss.getSheetByName('Hutang Piutang'));
+  applyGoalsFormulas_(ss.getSheetByName('Tabungan Goals'));
   seedSaldoAwal_(ss.getSheetByName('Saldo Awal'));
   seedBudget_(ss.getSheetByName('Budget'));
 
@@ -102,6 +114,40 @@ function applyTransaksiValidationAndFormulas_(sheet) {
     '=ARRAYFORMULA(IF(' + tanggalColLetter + '2:' + tanggalColLetter + '="","",' +
     'WEEKNUM(' + tanggalColLetter + '2:' + tanggalColLetter + ')))'
   );
+}
+
+function applyHutangPiutangValidation_(sheet) {
+  const numRows = 500;
+  const arahCol = HUTANG_PIUTANG_HEADERS.indexOf('Arah') + 1;
+  const statusCol = HUTANG_PIUTANG_HEADERS.indexOf('Status') + 1;
+  setDropdown_(sheet, arahCol, numRows, ['Piutang', 'Utang']);
+  setDropdown_(sheet, statusCol, numRows, ['Belum Lunas', 'Lunas']);
+}
+
+function applyGoalsFormulas_(sheet) {
+  const numRows = 200;
+  const namaCol = GOALS_HEADERS.indexOf('Nama Goal') + 1;
+  const targetCol = GOALS_HEADERS.indexOf('Target Nominal') + 1;
+  const terkumpulCol = GOALS_HEADERS.indexOf('Nominal Terkumpul') + 1;
+  const progressCol = GOALS_HEADERS.indexOf('Progress %') + 1;
+  const statusCol = GOALS_HEADERS.indexOf('Status') + 1;
+
+  const namaLetter = columnToLetter_(namaCol);
+  const targetLetter = columnToLetter_(targetCol);
+  const terkumpulLetter = columnToLetter_(terkumpulCol);
+
+  // Terkumpul = sum of Transaksi rows where Kategori = "Tabungan/Investasi" and
+  // Sub-kategori matches this goal's Nama Goal (the user picks a consistent goal name as the
+  // sub-kategori when logging a contribution, e.g. "keluar 200000 nabung kamera" -> sub_kategori "kamera").
+  sheet.getRange(2, terkumpulCol).setFormula(
+    '=ARRAYFORMULA(IF(' + namaLetter + '2:' + namaLetter + '="","",' +
+    'SUMIFS(Transaksi!E:E,Transaksi!G:G,' + namaLetter + '2:' + namaLetter + ',Transaksi!F:F,"Tabungan/Investasi")))'
+  );
+  sheet.getRange(2, progressCol).setFormula(
+    '=ARRAYFORMULA(IF(' + namaLetter + '2:' + namaLetter + '="","",' +
+    'IFERROR(ROUND(' + terkumpulLetter + '2:' + terkumpulLetter + '/' + targetLetter + '2:' + targetLetter + '*100,0),0)))'
+  );
+  setDropdown_(sheet, statusCol, numRows, ['Berjalan', 'Tercapai', 'Dibatalkan']);
 }
 
 function setDropdown_(sheet, col, numRows, values) {

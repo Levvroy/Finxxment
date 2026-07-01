@@ -54,3 +54,17 @@ a running n8n instance, which is out of scope for this session.
   — confirm Telegram receives the recap message and the `.xlsx` document respectively.
 - [ ] From a chat id that is *not* the whitelisted owner, send any message — confirm the bot
   gives no reply at all and nothing is written anywhere.
+- [ ] Set a low `Budget Bulanan` for one category, then log a transaction that pushes it past
+  80% and another past 100% — confirm an immediate Telegram warning fires each time (not just
+  on `/laporan`).
+- [ ] `/hutang tambah utang Budi 50000 2026-06-01` (a past date) — confirm a row appears in
+  `Hutang Piutang` with `Status=Belum Lunas`; send `/hutang` — confirm it's listed; send
+  `/hutang lunas <id>` — confirm status flips to `Lunas`.
+- [ ] `/goal tambah Kamera 5000000` — confirm a row appears in `Tabungan Goals`; log a
+  transaction with `Kategori=Tabungan/Investasi` and `Sub-kategori=Kamera` — confirm
+  `Nominal Terkumpul`/`Progress %` update automatically; send `/goal` — confirm the progress
+  message reflects it.
+- [ ] `/cari <keyword yang ada di transaksi lama>` — confirm matching rows come back.
+- [ ] Wait for (or manually trigger) `05-daily-alerts.json` with at least one over-budget
+  category or overdue hutang piutang entry present — confirm a summary message arrives; with
+  none present, confirm it stays silent.

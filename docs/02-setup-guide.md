@@ -6,12 +6,13 @@ follow it top to bottom the first time.
 1. **Create the Google Sheet.** Make a new blank Google Sheet. Note its ID from the URL
    (`https://docs.google.com/spreadsheets/d/<THIS_PART>/edit`) — this is `SPREADSHEET_ID`.
 
-2. **Provision the sheet structure.** Extensions > Apps Script. Create the 7 files under
+2. **Provision the sheet structure.** Extensions > Apps Script. Create the files under
    `apps-script/` in this repo as matching files in the Apps Script project (same filenames,
    paste the contents), plus `appsscript.json` via Project Settings > "Show appsscript.json in
    editor". Run `provisionFinxxmentSheets` once, authorize the requested scopes. Reload the
    Sheet — you should see `Transaksi`, `Pending Transaksi`, `Saldo Awal`, `Budget`,
-   `Log Error`, `Dashboard`, plus a new "Finxxment" menu (from `90-triggers.gs`'s `onOpen`).
+   `Log Error`, `Hutang Piutang`, `Tabungan Goals`, `Dashboard`, plus a new "Finxxment" menu
+   (from `90-triggers.gs`'s `onOpen`).
 
 3. **Set the webhook shared secret.** In the Apps Script project: Project Settings > Script
    Properties > Add property `SHARED_SECRET` with a random value you generate yourself. This
@@ -32,6 +33,9 @@ follow it top to bottom the first time.
    undo - Batalkan transaksi terakhir
    edit - Edit transaksi tertentu
    kategori - Daftar kategori yang tersedia
+   hutang - Kelola utang/piutang
+   goal - Kelola target tabungan
+   cari - Cari transaksi
    help - Panduan penggunaan bot
    ```
 
@@ -54,8 +58,8 @@ follow it top to bottom the first time.
 
 11. **Import the workflows into n8n**, in this order (see `n8n/README.md` for details):
     `02-clarification-handler.json`, then `01-main-input-handler.json` (paste workflow 02's id
-    into workflow 01's Execute Workflow node), then optionally `03-scheduled-report.json` and
-    `04-export-xlsx-berkala.json`.
+    into workflow 01's Execute Workflow node), then optionally `03-scheduled-report.json`,
+    `04-export-xlsx-berkala.json`, and `05-daily-alerts.json`.
 
 12. **Create the 4 n8n credentials** listed in `config/env.example` with those exact names.
 

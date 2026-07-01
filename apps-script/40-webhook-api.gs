@@ -37,6 +37,16 @@ function handleRequest_(e) {
         return jsonResponse_(buildLaporanPayload_(params.period || 'bulan_ini'));
       case 'pendingLookup':
         return jsonResponse_(lookupPending_(params.chatId));
+      case 'hutangPiutang':
+        return jsonResponse_(calculateHutangPiutang());
+      case 'savingsGoals':
+        return jsonResponse_(calculateSavingsGoals());
+      case 'budgetCheck':
+        return jsonResponse_(checkBudgetThreshold_(params.kategori));
+      case 'search':
+        return jsonResponse_({ results: searchTransaksi_(params.keyword) });
+      case 'dailyAlerts':
+        return jsonResponse_(buildDailyAlerts_());
       default:
         return jsonResponse_({ error: 'unknown action: ' + params.action }, 400);
     }
@@ -106,6 +116,108 @@ function lookupPending_(chatId) {
     }
   }
   return { status: 'None' };
+}
+
+const BUDGET_WARN_THRESHOLD = 0.8;
+const BUDGET_OVER_THRESHOLD = 1.0;
+
+/**
+ * Called right after a transaction is appended (n8n/workflows/01-main-input-handler.json,
+ * node "HTTP: Budget Check") so the bot can warn the user the moment a category crosses 80%/
+ * 100% of its monthly budget, instead of only surfacing it when they happen to open Dashboard
+ * or run /laporan.
+ */
+function checkBudgetThreshold_(kategori) {
+  if (!kategori) return { kategori: kategori, alert: false };
+  const ss = SpreadsheetApp.getActive();
+  const budgetRows = ss.getSheetByName('Budget').getDataRange().getValues();
+  const budgetRow = budgetRows.find(function (r) { return r[0] === kategori; });
+  const budget = budgetRow ? Number(budgetRow[1]) || 0 : 0;
+  if (budget <= 0) return { kategori: kategori, alert: false };
+
+  const transaksiRows = ss.getSheetByName('Transaksi').getDataRange().getValues();
+  const header = transaksiRows[0];
+  const jenisIdx = header.indexOf('Jenis');
+  const nominalIdx = header.indexOf('Nominal');
+  const kategoriIdx = header.indexOf('Kategori');
+  const tanggalIdx = header.indexOf('Tanggal Transaksi');
+  const now = new Date();
+
+  let actual = 0;
+  for (let i = 1; i < transaksiRows.length; i++) {
+    const row = transaksiRows[i];
+    if (row[jenisIdx] !== 'Keluar' || row[kategoriIdx] !== kategori) continue;
+    const tanggal = new Date(row[tanggalIdx]);
+    if (isNaN(tanggal.getTime()) || tanggal.getMonth() !== now.getMonth() || tanggal.getFullYear() !== now.getFullYear()) continue;
+    actual += Number(row[nominalIdx]) || 0;
+  }
+
+  const percentUsed = actual / budget;
+  let level = null;
+  if (percentUsed >= BUDGET_OVER_THRESHOLD) level = 'over';
+  else if (percentUsed >= BUDGET_WARN_THRESHOLD) level = 'warn';
+
+  return {
+    kategori: kategori,
+    budget: budget,
+    actual: actual,
+    percentUsed: Math.round(percentUsed * 100),
+    alert: level !== null,
+    level: level
+  };
+}
+
+/**
+ * Free-text search over Transaksi's Tujuan/Merchant and Catatan columns, for the /cari
+ * command. Returns the most recent N matches.
+ */
+function searchTransaksi_(keyword) {
+  if (!keyword) return [];
+  const rows = SpreadsheetApp.getActive().getSheetByName('Transaksi').getDataRange().getValues();
+  const header = rows[0];
+  const tujuanIdx = header.indexOf('Tujuan/Merchant');
+  const catatanIdx = header.indexOf('Catatan');
+  const needle = keyword.toLowerCase();
+
+  const matches = [];
+  for (let i = rows.length - 1; i >= 1; i--) {
+    const row = rows[i];
+    const haystack = (String(row[tujuanIdx] || '') + ' ' + String(row[catatanIdx] || '')).toLowerCase();
+    if (haystack.indexOf(needle) !== -1) {
+      const obj = {};
+      header.forEach(function (h, idx) { obj[h] = row[idx]; });
+      matches.push(obj);
+    }
+    if (matches.length >= 10) break;
+  }
+  return matches;
+}
+
+/**
+ * Combines proactive checks for the daily-alerts n8n workflow
+ * (n8n/workflows/05-daily-alerts.json): every budget already at/over threshold this month,
+ * plus any overdue hutang/piutang. Unlike checkBudgetThreshold_ (one category, right after a
+ * new transaction), this scans every budgeted category so a daily Cron can catch categories
+ * that crossed the threshold without a fresh transaction being the trigger.
+ */
+function buildDailyAlerts_() {
+  const ss = SpreadsheetApp.getActive();
+  const budgetRows = ss.getSheetByName('Budget').getDataRange().getValues();
+  const budgetAlerts = [];
+  for (let i = 1; i < budgetRows.length; i++) {
+    const kategori = budgetRows[i][0];
+    if (!kategori) continue;
+    const check = checkBudgetThreshold_(kategori);
+    if (check.alert) budgetAlerts.push(check);
+  }
+
+  const hutangPiutang = calculateHutangPiutang();
+
+  return {
+    budgetAlerts: budgetAlerts,
+    overdueHutangPiutang: hutangPiutang.overdue,
+    hasAlerts: budgetAlerts.length > 0 || hutangPiutang.overdue.length > 0
+  };
 }
 
 function logError_(params, err) {
