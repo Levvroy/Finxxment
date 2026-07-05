@@ -79,6 +79,17 @@ function applyBanding_(sheet, numCols, numDataRows) {
   range.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, false, false);
 }
 
+/**
+ * A freshly-inserted blank sheet only has its default column count (often fewer than 26, and
+ * always fewer than the Dashboard's chart-helper band which reaches column 28) - hideColumns/
+ * setColumnWidth/getRange all throw "out of bounds" past whatever currently exists. Call this
+ * before touching any column beyond what the sheet is guaranteed to already have.
+ */
+function ensureMinColumns_(sheet, minCols) {
+  const missing = minCols - sheet.getMaxColumns();
+  if (missing > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), missing);
+}
+
 function setColumnWidths_(sheet, widths) {
   widths.forEach(function (w, i) {
     if (w) sheet.setColumnWidth(i + 1, w);
@@ -135,6 +146,7 @@ function formatTransaksiSheet_(sheet) {
   if (!sheet) return;
   const numCols = TRANSAKSI_HEADERS.length;
   const numRows = 2000;
+  ensureMinColumns_(sheet, numCols);
   applyHeaderStyle_(sheet, numCols);
   sheet.setFrozenColumns(1);
   applyBanding_(sheet, numCols, numRows);
@@ -168,6 +180,7 @@ function formatPendingSheet_(sheet) {
   if (!sheet) return;
   const numCols = PENDING_HEADERS.length;
   const numRows = 500;
+  ensureMinColumns_(sheet, numCols);
   applyHeaderStyle_(sheet, numCols);
   applyBanding_(sheet, numCols, numRows);
   setColumnWidths_(sheet, [110, 220, 140, 160, 90, 260, 100, 90, 140]);
@@ -188,6 +201,7 @@ function formatPendingSheet_(sheet) {
 function formatSaldoAwalSheet_(sheet) {
   if (!sheet) return;
   const numCols = SALDO_AWAL_HEADERS.length;
+  ensureMinColumns_(sheet, numCols);
   applyHeaderStyle_(sheet, numCols);
   setColumnWidths_(sheet, [140, 180, 140]);
   const col = function (name) { return SALDO_AWAL_HEADERS.indexOf(name) + 1; };
@@ -198,6 +212,7 @@ function formatSaldoAwalSheet_(sheet) {
 function formatBudgetSheet_(sheet) {
   if (!sheet) return;
   const numCols = BUDGET_HEADERS.length;
+  ensureMinColumns_(sheet, numCols);
   applyHeaderStyle_(sheet, numCols);
   setColumnWidths_(sheet, [180, 160]);
   const col = function (name) { return BUDGET_HEADERS.indexOf(name) + 1; };
@@ -209,6 +224,7 @@ function formatLogErrorSheet_(sheet) {
   if (!sheet) return;
   const numCols = LOG_ERROR_HEADERS.length;
   const numRows = 500;
+  ensureMinColumns_(sheet, numCols);
   applyHeaderStyle_(sheet, numCols);
   applyBanding_(sheet, numCols, numRows);
   setColumnWidths_(sheet, [140, 110, 200, 160, 280, 90]);
@@ -225,6 +241,7 @@ function formatHutangPiutangSheet_(sheet) {
   if (!sheet) return;
   const numCols = HUTANG_PIUTANG_HEADERS.length;
   const numRows = 500;
+  ensureMinColumns_(sheet, numCols);
   applyHeaderStyle_(sheet, numCols);
   applyBanding_(sheet, numCols, numRows);
   setColumnWidths_(sheet, [90, 110, 100, 160, 120, 110, 110, 220]);
@@ -266,6 +283,7 @@ function formatGoalsSheet_(sheet) {
   if (!sheet) return;
   const numCols = GOALS_HEADERS.length;
   const numRows = 200;
+  ensureMinColumns_(sheet, numCols);
   applyHeaderStyle_(sheet, numCols);
   applyBanding_(sheet, numCols, numRows);
   setColumnWidths_(sheet, [180, 130, 120, 130, 110, 140, 90, 160]);
@@ -286,6 +304,8 @@ function formatGoalsSheet_(sheet) {
 
 function formatDashboardSheet_(sheet) {
   if (!sheet) return;
+  ensureMinColumns_(sheet, DASHBOARD_CHART_HELPER_COL + DASHBOARD_CHART_HELPER_SPAN - 1);
+
   // Break apart any merge left over from a previous provisioning run first - merging a range
   // that partially overlaps an existing different merge throws in Apps Script.
   sheet.getRange(DASHBOARD_ROW_TITLE, 1, 2, 8).breakApart();

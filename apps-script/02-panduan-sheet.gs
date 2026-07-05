@@ -22,6 +22,7 @@ function provisionPanduanSheet_(ss) {
     sheet.getCharts().forEach(function (c) { sheet.removeChart(c); });
   }
 
+  ensureMinColumns_(sheet, 3);
   sheet.setColumnWidths(1, 3, 260);
   sheet.setHiddenGridlines(true);
 
