@@ -3,6 +3,9 @@
  * "Progress %") is computed by formulas already written into the 'Tabungan Goals' sheet by
  * apps-script/00-bootstrap-provision.gs (applyGoalsFormulas_) — this file just reads them back
  * to write a compact summary block and flags goals that just crossed 100%.
+ *
+ * Writes only values into the card formatDashboardSheet_() already drew (header, table header,
+ * border, number formats) - see apps-script/05-dashboard-layout.gs.
  */
 
 function calculateSavingsGoals() {
@@ -42,15 +45,19 @@ function calculateSavingsGoals() {
 
 function writeGoalsToDashboard_(goals) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
-  const startRow = DASHBOARD_ROW_GOALS_HEADER;
-  const headers = ['🎯 Tabungan Goals', 'Target', 'Terkumpul', 'Progress', 'Status', 'Bar'];
-  sheet.getRange(startRow, 1, 1, headers.length).setValues([headers])
-    .setFontWeight('bold').setBackground(FINX_COLOR_SECTION_GOALS);
+  const startRow = DASHBOARD_GOALS_DATA_ROW;
+  const startCol = DASHBOARD_GOALS_START_COL;
+  const numCols = DASHBOARD_GOALS_COLS;
+  const maxRows = DASHBOARD_GOALS_MAX_ROWS;
+
+  // Clear the whole reserved area first so a shrinking goal list doesn't leave stale rows.
+  sheet.getRange(startRow, startCol, maxRows, numCols).clearContent();
+
   if (goals.length > 0) {
-    const values = goals.map(function (g) { return [g.nama, g.target, g.terkumpul, g.progress, g.status, g.progressBar]; });
-    sheet.getRange(startRow + 1, 1, values.length, headers.length).setValues(values);
-    sheet.getRange(startRow + 1, 2, values.length, 2).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
-    sheet.getRange(startRow + 1, 4, values.length, 1).setNumberFormat(FINX_FORMAT_PERCENT_SUFFIX).setHorizontalAlignment('right');
-    sheet.getRange(startRow + 1, 6, values.length, 1).setFontFamily('Courier New');
+    const rowCount = Math.min(goals.length, maxRows);
+    const values = goals.slice(0, rowCount).map(function (g) {
+      return [g.nama, g.target, g.terkumpul, g.progress, g.status, g.progressBar];
+    });
+    sheet.getRange(startRow, startCol, rowCount, numCols).setValues(values);
   }
 }

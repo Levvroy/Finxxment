@@ -5,11 +5,13 @@
  * that function any time you want to re-apply the look (e.g. after resetting a sheet's
  * formatting by hand).
  *
- * Section-header backgrounds for the Dashboard's individual blocks (Saldo, Burn Rate, Budget
- * vs Actual, Hutang Piutang, Tabungan Goals) are set inline in the files that own those blocks
- * (20-saldo-burnrate.gs, 30-budget-vs-actual.gs, 50-hutang-piutang.gs, 60-savings-goals.gs)
- * since those functions rewrite that content on every refresh anyway - this file only handles
- * the one-time structural formatting (title banner, column widths, hidden columns, banding).
+ * The 'Dashboard' sheet is a bento-style card grid (see apps-script/05-dashboard-layout.gs for
+ * the row/column plan): formatDashboardSheet_() draws every tile/card's border, header, and
+ * number format ONCE, here. The calculation files that own each block's data
+ * (20-saldo-burnrate.gs, 30-budget-vs-actual.gs, 50-hutang-piutang.gs, 60-savings-goals.gs,
+ * 10-dashboard-charts.gs) never touch borders/headers themselves - they only write plain
+ * values/formulas into the cells this file already formatted, so a daily refresh is cheap and
+ * never disturbs the layout.
  */
 
 // ---- Palette (kept centralized so every sheet reads consistently) ----
@@ -18,12 +20,15 @@ const FINX_COLOR_HEADER_TEXT = '#FFFFFF';
 const FINX_COLOR_TITLE_BG = '#0B5345';
 const FINX_COLOR_TITLE_TEXT = '#FFFFFF';
 const FINX_COLOR_SUBTITLE_TEXT = '#666666';
+const FINX_COLOR_PRIMARY_TEXT = '#0B0B0B';
+const FINX_COLOR_CARD_BORDER = '#D9D9D9';
 
-const FINX_COLOR_SECTION_SALDO = '#D0E4F5';
-const FINX_COLOR_SECTION_BURNRATE = '#FCE5CD';
-const FINX_COLOR_SECTION_BUDGET = '#E6D6F2';
-const FINX_COLOR_SECTION_HUTANG = '#FADBD8';
-const FINX_COLOR_SECTION_GOALS = '#D9EAD3';
+// Fixed-order accent palette for bento card/tile identity (decorative only - never used to
+// encode a data series, so cycling it across cards is fine; see docs/07 for the rationale).
+const FINX_ACCENT_COLORS = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834'];
+function finxAccent_(i) {
+  return FINX_ACCENT_COLORS[i % FINX_ACCENT_COLORS.length];
+}
 
 const FINX_COLOR_SUCCESS_BG = '#D9EAD3';
 const FINX_COLOR_SUCCESS_TEXT = '#274E13';
@@ -138,6 +143,93 @@ function setSheetTabColors_(ss) {
     const sheet = ss.getSheetByName(name);
     if (sheet) sheet.setTabColor(tabColors[name]);
   });
+}
+
+// ---- Bento grid chrome (Dashboard only) ----
+//
+// These draw STATIC chrome (borders, headers, tile labels, cell formatting) exactly once,
+// from formatDashboardSheet_ at provisioning time. The calculation files never call these -
+// they only ever write plain values into the cells these functions already formatted, so a
+// daily refresh is cheap and never disturbs the layout.
+
+function drawBentoCardBorder_(sheet, startRow, startCol, numRows, numCols) {
+  sheet.getRange(startRow, startCol, numRows, numCols)
+    .setBorder(true, true, true, true, false, false, FINX_COLOR_CARD_BORDER, SpreadsheetApp.BorderStyle.SOLID);
+}
+
+/**
+ * Same as drawBentoCardBorder_ but explicitly omits the top edge - use this for a card's BODY
+ * box when a drawBentoCardHeader_ sits directly above it. The header already draws a colored
+ * accent line along that shared boundary; drawing a plain gray top border on the body range
+ * right after would silently overwrite that accent line (last write to a shared cell edge
+ * wins), so the body box only ever contributes its left/right/bottom sides.
+ */
+function drawBentoCardBodyBorder_(sheet, startRow, startCol, numRows, numCols) {
+  sheet.getRange(startRow, startCol, numRows, numCols)
+    .setBorder(false, true, true, true, false, false, FINX_COLOR_CARD_BORDER, SpreadsheetApp.BorderStyle.SOLID);
+}
+
+/** A full-width (or half-width) card header: title bar with a colored accent underline. */
+function drawBentoCardHeader_(sheet, row, startCol, numCols, title, accentColor) {
+  const range = sheet.getRange(row, startCol, 1, numCols);
+  if (numCols > 1) range.merge();
+  range.setValue(title)
+    .setBackground(FINX_COLOR_NEUTRAL_BG)
+    .setFontColor(FINX_COLOR_PRIMARY_TEXT)
+    .setFontWeight('bold')
+    .setFontSize(11)
+    .setVerticalAlignment('middle')
+    .setHorizontalAlignment('left');
+  sheet.getRange(row, startCol, 1, numCols)
+    .setBorder(true, true, null, true, null, null, FINX_COLOR_CARD_BORDER, SpreadsheetApp.BorderStyle.SOLID);
+  sheet.getRange(row, startCol, 1, numCols)
+    .setBorder(null, null, true, null, null, null, accentColor, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+  sheet.setRowHeight(row, 26);
+}
+
+/** A card header PLUS the bordered body box beneath it, in one call - for cards whose body is
+ * plain cells (tables, metric lists) rather than a floating chart. */
+function drawBentoCard_(sheet, headerRow, startCol, numCols, bodyRows, title, accentColor) {
+  drawBentoCardHeader_(sheet, headerRow, startCol, numCols, title, accentColor);
+  if (bodyRows > 0) {
+    drawBentoCardBodyBorder_(sheet, headerRow + 1, startCol, bodyRows, numCols);
+  }
+}
+
+/**
+ * A stat tile: label row (small, muted, uppercase) + value row (large, bold) + footnote row
+ * (small, muted) - the figure contract from the dataviz skill's stat-tile spec. Only draws
+ * chrome; calculateSaldo()/calculateBurnRate() fill in the value/footnote text later.
+ */
+function drawBentoTile_(sheet, labelRow, valueRow, footRow, startCol, numCols, label, accentColor) {
+  drawBentoCardBorder_(sheet, labelRow, startCol, footRow - labelRow + 1, numCols);
+
+  const labelRange = sheet.getRange(labelRow, startCol, 1, numCols);
+  if (numCols > 1) labelRange.merge();
+  labelRange.setValue(label.toUpperCase())
+    .setFontColor(FINX_COLOR_NEUTRAL_TEXT)
+    .setFontWeight('bold')
+    .setFontSize(9)
+    .setHorizontalAlignment('left')
+    .setVerticalAlignment('middle');
+  sheet.getRange(labelRow, startCol, 1, numCols)
+    .setBorder(true, null, null, null, null, null, accentColor, SpreadsheetApp.BorderStyle.SOLID_THICK);
+  sheet.setRowHeight(labelRow, 22);
+
+  const valueRange = sheet.getRange(valueRow, startCol, 1, numCols);
+  if (numCols > 1) valueRange.merge();
+  valueRange.setFontSize(18)
+    .setFontWeight('bold')
+    .setFontColor(FINX_COLOR_PRIMARY_TEXT)
+    .setHorizontalAlignment('left')
+    .setVerticalAlignment('middle');
+  sheet.setRowHeight(valueRow, 32);
+
+  const footRange = sheet.getRange(footRow, startCol, 1, numCols);
+  if (numCols > 1) footRange.merge();
+  footRange.setFontColor(FINX_COLOR_NEUTRAL_TEXT).setFontSize(9)
+    .setHorizontalAlignment('left').setVerticalAlignment('middle');
+  sheet.setRowHeight(footRow, 18);
 }
 
 // ---- Per-sheet formatting ----
@@ -302,32 +394,119 @@ function formatGoalsSheet_(sheet) {
   ]);
 }
 
+/**
+ * Draws the entire bento-grid chrome ONCE: title, a uniform 12-column grid, every tile/card
+ * border+header+label, and pre-set number formats on every value cell - see
+ * apps-script/05-dashboard-layout.gs for the row/column plan. The calculation files
+ * (20/30/50/60-*.gs, 10-dashboard-charts.gs) only ever write plain values/formulas into the
+ * cells named there; they never touch borders or headers, so a daily refresh never disturbs
+ * the layout and this function only needs to run once at provisioning time.
+ */
 function formatDashboardSheet_(sheet) {
   if (!sheet) return;
-  ensureMinColumns_(sheet, DASHBOARD_CHART_HELPER_COL + DASHBOARD_CHART_HELPER_SPAN - 1);
+  const totalCols = DASHBOARD_CHART_HELPER_COL + DASHBOARD_CHART_HELPER_SPAN - 1;
+  ensureMinColumns_(sheet, totalCols);
 
-  // Break apart any merge left over from a previous provisioning run first - merging a range
-  // that partially overlaps an existing different merge throws in Apps Script.
-  sheet.getRange(DASHBOARD_ROW_TITLE, 1, 2, 8).breakApart();
+  // Break apart every merge left over from a previous run first - merging a range that
+  // partially overlaps an existing different merge throws in Apps Script, and this layout has
+  // changed shape across versions.
+  const lastRow = Math.max(sheet.getMaxRows(), 100);
+  sheet.getRange(1, 1, lastRow, totalCols).breakApart();
+  sheet.getRange(1, 1, lastRow, totalCols).clearFormat();
 
-  sheet.getRange(DASHBOARD_ROW_TITLE, 1, 1, 8).merge()
+  // ---- Title banner ----
+  sheet.getRange(DASHBOARD_ROW_TITLE, 1, 1, DASHBOARD_GRID_COLS).merge()
     .setValue('📊 FINXXMENT DASHBOARD')
     .setBackground(FINX_COLOR_TITLE_BG)
     .setFontColor(FINX_COLOR_TITLE_TEXT)
     .setFontWeight('bold')
-    .setFontSize(14)
+    .setFontSize(16)
     .setHorizontalAlignment('center')
     .setVerticalAlignment('middle');
-  sheet.setRowHeight(DASHBOARD_ROW_TITLE, 32);
+  sheet.setRowHeight(DASHBOARD_ROW_TITLE, 36);
 
-  sheet.getRange(DASHBOARD_ROW_SUBTITLE, 1, 1, 8).merge()
+  sheet.getRange(DASHBOARD_ROW_SUBTITLE, 1, 1, DASHBOARD_GRID_COLS).merge()
     .setValue('Dihitung ulang otomatis tiap hari jam 06:00 (atau via menu Finxxment > Refresh Dashboard Now) - jangan diedit manual.')
     .setFontColor(FINX_COLOR_SUBTITLE_TEXT)
     .setFontStyle('italic')
     .setHorizontalAlignment('center');
+  sheet.setRowHeight(DASHBOARD_ROW_SUBTITLE, 22);
 
-  setColumnWidths_(sheet, [240, 130, 130, 130, 130]);
+  setColumnWidths_(sheet, new Array(DASHBOARD_GRID_COLS).fill(DASHBOARD_COL_WIDTH));
   sheet.setFrozenRows(2);
+  sheet.setHiddenGridlines(true);
+
+  // ---- KPI row 1: hero tiles ----
+  const kpi1 = [
+    { label: 'Total Saldo' },
+    { label: 'Pengeluaran Bulan Ini (MTD)' },
+    { label: 'Rata-rata Harian' },
+    { label: 'Proyeksi Akhir Bulan' }
+  ];
+  kpi1.forEach(function (tile, i) {
+    drawBentoTile_(sheet, DASHBOARD_KPI1_LABEL_ROW, DASHBOARD_KPI1_VALUE_ROW, DASHBOARD_KPI1_FOOT_ROW,
+      DASHBOARD_KPI1_STARTS[i], DASHBOARD_KPI1_TILE_COLS, tile.label, finxAccent_(i));
+    sheet.getRange(DASHBOARD_KPI1_VALUE_ROW, DASHBOARD_KPI1_STARTS[i]).setNumberFormat(FINX_FORMAT_RUPIAH);
+  });
+
+  // ---- KPI row 2: one tile per sumber dana ----
+  SUMBER_DANA.forEach(function (nama, i) {
+    if (i >= DASHBOARD_KPI2_STARTS.length) return;
+    drawBentoTile_(sheet, DASHBOARD_KPI2_LABEL_ROW, DASHBOARD_KPI2_VALUE_ROW, DASHBOARD_KPI2_FOOT_ROW,
+      DASHBOARD_KPI2_STARTS[i], DASHBOARD_KPI2_TILE_COLS, nama, finxAccent_(i + 4));
+    sheet.getRange(DASHBOARD_KPI2_VALUE_ROW, DASHBOARD_KPI2_STARTS[i]).setNumberFormat(FINX_FORMAT_RUPIAH);
+  });
+
+  // ---- Hero chart card: Cash Flow (full width) ----
+  drawBentoCardHeader_(sheet, DASHBOARD_HERO_HEADER_ROW, 1, DASHBOARD_GRID_COLS,
+    '💰 Cash Flow: Masuk vs Keluar per Bulan', finxAccent_(0));
+  drawBentoCardBodyBorder_(sheet, DASHBOARD_HERO_BODY_ROW, 1, DASHBOARD_HERO_BODY_ROWS, DASHBOARD_GRID_COLS);
+
+  // ---- Chart row 2: Kategori Pie | Sumber Dana Pie ----
+  drawBentoCardHeader_(sheet, DASHBOARD_CHARTROW2_HEADER_ROW, 1, 6, '🍩 Breakdown per Kategori (Bulan Ini)', finxAccent_(1));
+  drawBentoCardBodyBorder_(sheet, DASHBOARD_CHARTROW2_BODY_ROW, 1, DASHBOARD_CHARTROW2_BODY_ROWS, 6);
+  drawBentoCardHeader_(sheet, DASHBOARD_CHARTROW2_HEADER_ROW, 7, 6, '🍩 Breakdown per Sumber Dana (Bulan Ini)', finxAccent_(2));
+  drawBentoCardBodyBorder_(sheet, DASHBOARD_CHARTROW2_BODY_ROW, 7, DASHBOARD_CHARTROW2_BODY_ROWS, 6);
+
+  // ---- Chart row 3: Trend Line | Top 5 Kategori ----
+  drawBentoCardHeader_(sheet, DASHBOARD_CHARTROW3_HEADER_ROW, 1, 6, '📉 Trend 6 Bulan Terakhir', finxAccent_(3));
+  drawBentoCardBodyBorder_(sheet, DASHBOARD_CHARTROW3_BODY_ROW, 1, DASHBOARD_CHARTROW3_BODY_ROWS, 6);
+  drawBentoCardHeader_(sheet, DASHBOARD_CHARTROW3_HEADER_ROW, 7, 6, '🏆 Top 5 Kategori (Bulan Ini)', finxAccent_(4));
+  drawBentoCardBodyBorder_(sheet, DASHBOARD_CHARTROW3_BODY_ROW, 7, DASHBOARD_CHARTROW3_BODY_ROWS, 6);
+
+  // ---- Budget vs Actual: wide table card ----
+  const budgetBodyRows = 1 + DASHBOARD_BUDGET_MAX_ROWS; // table header + data rows
+  drawBentoCard_(sheet, DASHBOARD_BUDGET_HEADER_ROW, 1, DASHBOARD_GRID_COLS, budgetBodyRows,
+    '📐 Budget vs Actual', finxAccent_(5));
+  const budgetHeaders = ['Kategori', 'Budget', 'Actual', 'Delta', '% Terpakai'];
+  sheet.getRange(DASHBOARD_BUDGET_TABLE_HEADER_ROW, 1, 1, DASHBOARD_BUDGET_COLS).setValues([budgetHeaders])
+    .setFontWeight('bold').setBackground(FINX_COLOR_NEUTRAL_BG).setFontColor(FINX_COLOR_PRIMARY_TEXT);
+  sheet.getRange(DASHBOARD_BUDGET_DATA_ROW, 2, DASHBOARD_BUDGET_MAX_ROWS, 3).setNumberFormat(FINX_FORMAT_RUPIAH);
+  sheet.getRange(DASHBOARD_BUDGET_DATA_ROW, 5, DASHBOARD_BUDGET_MAX_ROWS, 1).setNumberFormat(FINX_FORMAT_PERCENT_SUFFIX);
+
+  // ---- Hutang Piutang (left) | Tabungan Goals (right) ----
+  drawBentoCard_(sheet, DASHBOARD_CARDS3_HEADER_ROW, DASHBOARD_HUTANG_START_COL, 6, DASHBOARD_HUTANG_CARD_ROWS - 1,
+    '🤝 Hutang Piutang', finxAccent_(6));
+  // Label text is a single unmerged cell that visually overflows across the blank cells to its
+  // right (standard Sheets behavior) - the value lives in its own dedicated cell at the card's
+  // right edge so it can be right-aligned cleanly, rather than an unmerged multi-column span
+  // where only the first cell would ever hold a value.
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW, DASHBOARD_HUTANG_START_COL).setValue('Total Piutang (orang berhutang ke saya)');
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW, DASHBOARD_HUTANG_START_COL + 5).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW + 1, DASHBOARD_HUTANG_START_COL).setValue('Total Utang (saya berhutang)');
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW + 1, DASHBOARD_HUTANG_START_COL + 5).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW + 2, DASHBOARD_HUTANG_START_COL, 1, 6)
+    .setFontColor(FINX_COLOR_NEUTRAL_TEXT).setFontStyle('italic').setFontSize(9);
+
+  const goalsBodyRows = 1 + DASHBOARD_GOALS_MAX_ROWS;
+  drawBentoCard_(sheet, DASHBOARD_CARDS3_HEADER_ROW, DASHBOARD_GOALS_START_COL, 6, goalsBodyRows,
+    '🎯 Tabungan Goals', finxAccent_(7));
+  const goalsHeaders = ['Nama Goal', 'Target', 'Terkumpul', 'Progress', 'Status', 'Bar'];
+  sheet.getRange(DASHBOARD_GOALS_TABLE_HEADER_ROW, DASHBOARD_GOALS_START_COL, 1, DASHBOARD_GOALS_COLS).setValues([goalsHeaders])
+    .setFontWeight('bold').setBackground(FINX_COLOR_NEUTRAL_BG).setFontColor(FINX_COLOR_PRIMARY_TEXT);
+  sheet.getRange(DASHBOARD_GOALS_DATA_ROW, DASHBOARD_GOALS_START_COL + 1, DASHBOARD_GOALS_MAX_ROWS, 2).setNumberFormat(FINX_FORMAT_RUPIAH);
+  sheet.getRange(DASHBOARD_GOALS_DATA_ROW, DASHBOARD_GOALS_START_COL + 3, DASHBOARD_GOALS_MAX_ROWS, 1).setNumberFormat(FINX_FORMAT_PERCENT_SUFFIX);
+  sheet.getRange(DASHBOARD_GOALS_DATA_ROW, DASHBOARD_GOALS_START_COL + 5, DASHBOARD_GOALS_MAX_ROWS, 1).setFontFamily('Courier New');
 
   // Chart QUERY helper formulas are implementation detail, not meant to be read directly.
   sheet.hideColumns(DASHBOARD_CHART_HELPER_COL, DASHBOARD_CHART_HELPER_SPAN);

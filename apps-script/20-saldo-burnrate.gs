@@ -2,6 +2,9 @@
  * Saldo (balance) and burn-rate calculations, shared by the Dashboard sheet's on-screen
  * summary and the /saldo Telegram command (called via apps-script/40-webhook-api.gs so the
  * math lives in exactly one place instead of being duplicated in an n8n Code node).
+ *
+ * Writes only VALUES into the KPI tiles formatDashboardSheet_() already drew (see
+ * apps-script/05-dashboard-layout.gs) - never touches borders/labels/number formats here.
  */
 
 function calculateSaldo() {
@@ -35,16 +38,23 @@ function calculateSaldo() {
 
 function writeSaldoToDashboard_(saldo) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
-  const startRow = DASHBOARD_ROW_SALDO_HEADER + 1;
-  const startCol = 1;
-  sheet.getRange(startRow - 1, startCol, 1, 2).setValues([['💰 Saldo per Sumber Dana', 'Nilai']])
-    .setFontWeight('bold').setBackground(FINX_COLOR_SECTION_SALDO);
-  const rows = Object.entries(saldo);
-  if (rows.length > 0) {
-    const range = sheet.getRange(startRow, startCol, rows.length, 2);
-    range.setValues(rows);
-    sheet.getRange(startRow, startCol + 1, rows.length, 1).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
-  }
+
+  const total = SUMBER_DANA.reduce(function (sum, nama) { return sum + (saldo[nama] || 0); }, 0);
+  writeTileValue_(sheet, DASHBOARD_KPI1_VALUE_ROW, DASHBOARD_KPI1_STARTS[0], total);
+
+  SUMBER_DANA.forEach(function (nama, i) {
+    if (i >= DASHBOARD_KPI2_STARTS.length) return;
+    const value = saldo[nama] || 0;
+    writeTileValue_(sheet, DASHBOARD_KPI2_VALUE_ROW, DASHBOARD_KPI2_STARTS[i], value);
+  });
+}
+
+/** Writes a tile's value, coloring it red when negative - the tile's chrome (font size, bold,
+ * number format) was already set once by drawBentoTile_ in 01-sheet-formatting.gs. */
+function writeTileValue_(sheet, row, col, value) {
+  sheet.getRange(row, col)
+    .setValue(value)
+    .setFontColor(value < 0 ? FINX_COLOR_DANGER_TEXT : FINX_COLOR_PRIMARY_TEXT);
 }
 
 function calculateBurnRate() {
@@ -79,13 +89,10 @@ function calculateBurnRate() {
 
 function writeBurnRateToDashboard_(result) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
-  const startRow = DASHBOARD_ROW_BURNRATE_HEADER;
-  sheet.getRange(startRow, 1, 4, 2).setValues([
-    ['🔥 Burn Rate', ''],
-    ['Pengeluaran Bulan Ini (MTD)', result.totalKeluarMtd],
-    ['Rata-rata Harian', result.avgDailySpend],
-    ['Proyeksi Akhir Bulan', result.projectedMonthEnd]
-  ]);
-  sheet.getRange(startRow, 1, 1, 2).setFontWeight('bold').setBackground(FINX_COLOR_SECTION_BURNRATE);
-  sheet.getRange(startRow + 1, 2, 3, 1).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
+  writeTileValue_(sheet, DASHBOARD_KPI1_VALUE_ROW, DASHBOARD_KPI1_STARTS[1], result.totalKeluarMtd);
+  writeTileValue_(sheet, DASHBOARD_KPI1_VALUE_ROW, DASHBOARD_KPI1_STARTS[2], result.avgDailySpend);
+  writeTileValue_(sheet, DASHBOARD_KPI1_VALUE_ROW, DASHBOARD_KPI1_STARTS[3], result.projectedMonthEnd);
+
+  sheet.getRange(DASHBOARD_KPI1_FOOT_ROW, DASHBOARD_KPI1_STARTS[2])
+    .setValue('hari ke-' + result.dayOfMonth + ' dari ' + result.daysInMonth);
 }
