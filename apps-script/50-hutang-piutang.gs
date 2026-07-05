@@ -2,6 +2,9 @@
  * Utang/piutang (debt & receivable) summary. Rows are added directly by n8n's /hutang command
  * branch (n8n/workflows/01-main-input-handler.json); this file only computes summaries used by
  * the Dashboard and by the daily-alerts webhook action for overdue reminders.
+ *
+ * Writes only values into the card formatDashboardSheet_() already drew (header, labels,
+ * border, number formats) - see apps-script/05-dashboard-layout.gs.
  */
 
 function calculateHutangPiutang() {
@@ -40,12 +43,17 @@ function calculateHutangPiutang() {
 
 function writeHutangPiutangToDashboard_(result) {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Dashboard');
-  const startRow = DASHBOARD_ROW_HUTANG_HEADER;
-  sheet.getRange(startRow, 1, 3, 2).setValues([
-    ['🤝 Hutang Piutang', ''],
-    ['Total Piutang (orang berhutang ke saya)', result.totalPiutang],
-    ['Total Utang (saya berhutang)', result.totalUtang]
-  ]);
-  sheet.getRange(startRow, 1, 1, 2).setFontWeight('bold').setBackground(FINX_COLOR_SECTION_HUTANG);
-  sheet.getRange(startRow + 1, 2, 2, 1).setNumberFormat(FINX_FORMAT_RUPIAH).setHorizontalAlignment('right');
+  const col = DASHBOARD_HUTANG_START_COL;
+
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW, col + 5).setValue(result.totalPiutang);
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW + 1, col + 5)
+    .setValue(result.totalUtang)
+    .setFontColor(result.totalUtang > 0 ? FINX_COLOR_WARNING_TEXT : FINX_COLOR_PRIMARY_TEXT);
+
+  const footnote = result.overdue.length > 0
+    ? '⚠️ ' + result.overdue.length + ' entri lewat jatuh tempo'
+    : 'Tidak ada yang lewat jatuh tempo';
+  sheet.getRange(DASHBOARD_HUTANG_DATA_ROW + 2, col, 1, 6)
+    .setValue(footnote)
+    .setFontColor(result.overdue.length > 0 ? FINX_COLOR_DANGER_TEXT : FINX_COLOR_NEUTRAL_TEXT);
 }

@@ -1,14 +1,16 @@
 /**
  * Builds/refreshes the Dashboard sheet: summary numbers (via calculateSaldo/calculateBurnRate/
  * calculateBudgetVsActual/calculateHutangPiutang/calculateSavingsGoals from the other
- * apps-script files) plus five charts. Charts are identified by a name tag stored in each
- * chart's options so refreshDashboard() can find and replace them instead of duplicating a new
- * chart on every run.
+ * apps-script files) plus five charts, positioned inside the bento card slots
+ * formatDashboardSheet_() already drew (see apps-script/05-dashboard-layout.gs). Charts are
+ * identified by a name tag stored in each chart's options so refreshDashboard() can find and
+ * replace them instead of duplicating a new chart on every run. Each chart's own title is
+ * intentionally blank - the card header above it already carries the title, and a second title
+ * inside the chart would just repeat it.
  *
- * Layout: text summary blocks live in columns A-E per apps-script/05-dashboard-layout.gs; the
- * QUERY helper formulas that feed the charts below live in a separate column band
- * (DASHBOARD_CHART_HELPER_COL onward) so their multi-row spill never collides with the text
- * blocks regardless of how many rows either side uses.
+ * The QUERY helper formulas that feed the charts live in a separate, hidden column band
+ * (DASHBOARD_CHART_HELPER_COL onward) so their multi-row spill never collides with the visible
+ * grid regardless of how much history accumulates.
  *
  * Trigger model (registered in 90-triggers.gs): a daily time-driven trigger calls
  * refreshDashboard() so the Dashboard reflects the latest ledger without the user opening the
@@ -16,6 +18,14 @@
  * NOT wired to a full chart rebuild here (would blow through Apps Script quotas on rapid edits)
  * — only lightweight saldo/burn-rate recalculation should hook onEdit if you want that later.
  */
+
+// Functions, not top-level consts: Apps Script doesn't guarantee file load order, so a
+// top-level `const X = DASHBOARD_GRID_COLS * ...` here could evaluate before
+// 05-dashboard-layout.gs's top-level consts exist. Computing these lazily, inside a function
+// body, is safe because by the time any function actually runs, every file has already loaded.
+function dashboardChartFullWidth_() { return DASHBOARD_GRID_COLS * DASHBOARD_COL_WIDTH - 20; }
+function dashboardChartHalfWidth_() { return 6 * DASHBOARD_COL_WIDTH - 20; }
+const DASHBOARD_CHART_HEIGHT = 280;
 
 function refreshDashboard() {
   calculateSaldo();
@@ -46,8 +56,10 @@ function buildCashflowChart() {
   replaceChart_(sheet, 'cashflow_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.COLUMN)
       .addRange(sheet.getRange(DASHBOARD_CHART_HELPER_ROW, col, 13, 3))
-      .setPosition(1, 4, 0, 0)
-      .setOption('title', 'Cash Flow: Masuk vs Keluar per Bulan');
+      .setPosition(DASHBOARD_HERO_BODY_ROW, 1, 4, 4)
+      .setOption('title', '')
+      .setOption('width', dashboardChartFullWidth_())
+      .setOption('height', DASHBOARD_CHART_HEIGHT);
   });
 }
 
@@ -64,8 +76,10 @@ function buildKategoriPieChart() {
   replaceChart_(sheet, 'kategori_pie_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.PIE)
       .addRange(sheet.getRange(DASHBOARD_CHART_HELPER_ROW, col, 14, 2))
-      .setPosition(20, 4, 0, 0)
-      .setOption('title', 'Breakdown per Kategori (Bulan Ini)');
+      .setPosition(DASHBOARD_CHARTROW2_BODY_ROW, 1, 4, 4)
+      .setOption('title', '')
+      .setOption('width', dashboardChartHalfWidth_())
+      .setOption('height', DASHBOARD_CHART_HEIGHT);
   });
 }
 
@@ -80,8 +94,10 @@ function buildSumberDanaBreakdownChart() {
   replaceChart_(sheet, 'sumber_dana_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.PIE)
       .addRange(sheet.getRange(DASHBOARD_CHART_HELPER_ROW, col, 7, 2))
-      .setPosition(39, 4, 0, 0)
-      .setOption('title', 'Breakdown per Sumber Dana (Bulan Ini)');
+      .setPosition(DASHBOARD_CHARTROW2_BODY_ROW, 7, 4, 4)
+      .setOption('title', '')
+      .setOption('width', dashboardChartHalfWidth_())
+      .setOption('height', DASHBOARD_CHART_HEIGHT);
   });
 }
 
@@ -97,8 +113,10 @@ function buildTrendLineChart(monthsBack) {
   replaceChart_(sheet, 'trend_line_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.LINE)
       .addRange(sheet.getRange(DASHBOARD_CHART_HELPER_ROW, col, monthsBack + 1, 2))
-      .setPosition(58, 4, 0, 0)
-      .setOption('title', 'Trend Pengeluaran ' + monthsBack + ' Bulan Terakhir');
+      .setPosition(DASHBOARD_CHARTROW3_BODY_ROW, 1, 4, 4)
+      .setOption('title', '')
+      .setOption('width', dashboardChartHalfWidth_())
+      .setOption('height', DASHBOARD_CHART_HEIGHT);
   });
 }
 
@@ -113,8 +131,10 @@ function buildTop5CategoriesChart() {
   replaceChart_(sheet, 'top5_kategori_chart', function (builder) {
     return builder.setChartType(Charts.ChartType.BAR)
       .addRange(sheet.getRange(DASHBOARD_CHART_HELPER_ROW, col, 6, 2))
-      .setPosition(77, 4, 0, 0)
-      .setOption('title', 'Top 5 Kategori Terbesar (Bulan Ini)');
+      .setPosition(DASHBOARD_CHARTROW3_BODY_ROW, 7, 4, 4)
+      .setOption('title', '')
+      .setOption('width', dashboardChartHalfWidth_())
+      .setOption('height', DASHBOARD_CHART_HEIGHT);
   });
 }
 

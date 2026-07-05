@@ -27,13 +27,42 @@ adding a new computed column.
   `REPT()`, capped so it never shows more than 10 blocks or a negative count even if a goal is
   over-saved.
 - **Hidden implementation-detail columns** (`Pending Transaksi.Raw Payload`, the Dashboard's
-  chart QUERY helper columns from column O onward) so the sheet a human looks at stays free of
+  chart QUERY helper columns from column P onward) so the sheet a human looks at stays free of
   serialized JSON and raw formulas that aren't meant to be read directly.
-- **Dashboard title banner** + a fixed row layout (`apps-script/05-dashboard-layout.gs`) keeping
-  every section (Saldo, Burn Rate, Budget vs Actual, Hutang Piutang, Tabungan Goals) in its own
-  colored block, with the chart-helper formulas confined to a completely separate column band
-  so the two areas can never spill into each other (see bug below).
 - **Tab colors** per sheet for quick visual identification when many tabs are open.
+
+### Dashboard: bento grid
+
+The Dashboard is a uniform 12-column card grid (`apps-script/05-dashboard-layout.gs` — row/col
+plan; `apps-script/01-sheet-formatting.gs`'s `formatDashboardSheet_()` — the drawing code),
+not a single vertical stack of lists:
+
+- **Row 1-2**: title banner + "don't edit manually" subtitle.
+- **KPI tile row 1**: 4 hero stat tiles (Total Saldo, MTD spend, Rata-rata Harian, Proyeksi
+  Akhir Bulan), 3 columns each — the dataviz skill's stat-tile contract (label / big value /
+  optional footnote), not a plain two-column list.
+- **KPI tile row 2**: one tile per sumber dana (up to 6), 2 columns each.
+- **Hero chart card**: Cash Flow, full width.
+- **Two half-width chart-card rows**: Kategori Pie + Sumber Dana Pie, then Trend Line + Top 5.
+- **Budget vs Actual**: a wide table card.
+- **Hutang Piutang + Tabungan Goals**: two cards side by side, deliberately different heights
+  (a defining bento trait — cards aren't forced to match row-for-row).
+
+Every card/tile has a light neutral body, a hairline gray border, and a colored accent line
+under its header — drawn from a fixed-order 8-color accent palette (`FINX_ACCENT_COLORS`),
+cycled decoratively across cards. This is **not** the same rule as chart series color: a
+chart's categorical hues encode data identity and must never be reused arbitrarily, but a
+card's accent color is pure UI chrome, so cycling it is fine.
+
+**Chrome is drawn exactly once.** `formatDashboardSheet_()` runs only at provisioning time and
+draws every border, header, and number format. The calculation files
+(`20-saldo-burnrate.gs`, `30-budget-vs-actual.gs`, `50-hutang-piutang.gs`, `60-savings-goals.gs`,
+`10-dashboard-charts.gs`) never touch borders or headers — they only write plain values/formulas
+into the cells that chrome already formatted, so a daily refresh is cheap and can never disturb
+the layout. When drawing a header immediately above a body box, the body's border helper
+(`drawBentoCardBodyBorder_`) deliberately omits the top edge, because the header already drew a
+colored accent line there — drawing a second, plain gray top border on the body would silently
+overwrite it (last write to a shared cell edge wins in Apps Script).
 
 Re-run `provisionFinxxmentSheets()` (or just the "Re-apply Formatting" / "Recalculate ..." menu
 items under **Finxxment**) any time you want the look reapplied.
@@ -77,6 +106,18 @@ calendar month from *every* earlier year. Fixed in:
    - `n8n/workflows/03-scheduled-report.json` — `Code: Aggregate + Insight Data` was missing
      the year check entirely for *both* "this month" and "last month"; fixed the same way.
 
+**5. "Those columns are out of bounds" on first provisioning run.** A freshly-inserted blank
+sheet only has its default column count, which can be fewer than whatever column a formatter
+touches (the Dashboard's chart-helper band reaches column 29). Fixed with `ensureMinColumns_()`,
+called defensively at the top of every per-sheet formatter, not just Dashboard's.
+
+**6. Budget vs Actual false-positive "over budget" highlight.** `Budget` seeds with *empty*
+budget amounts by default (`seedBudget_`). The "over budget" conditional-format rule originally
+only checked `Delta < 0`; for an unconfigured category (budget = 0), `Delta = 0 - actual` is
+negative the moment there's *any* spending at all, so a fresh setup would show categories
+flagged red before the user ever set a real budget. Fixed by adding a `$B > 0` guard (only flag
+categories that actually have a budget) to the rule in `30-budget-vs-actual.gs`.
+
 ## Formula correctness rules for future additions
 
 - **Any `ARRAYFORMULA` column that an external writer (n8n) might append rows into must be the
@@ -86,7 +127,16 @@ calendar month from *every* earlier year. Fixed in:
   `month(x) = month(today())` alone is wrong past the first year of data.
 - **When a helper column is itself produced by a formula that can return `""`,** don't filter
   it with `is not null` in a `QUERY` - use `!= ''`.
-- **Keep the chart-helper column band and the text-summary column band disjoint.** If you add a
-  new Dashboard block, give it its own row range in `05-dashboard-layout.gs`; if you add a new
-  chart, keep its helper formula in the existing `DASHBOARD_CHART_HELPER_COL` band, not in
-  columns A-E.
+- **Keep the chart-helper column band and the visible 12-column grid disjoint.** If you add a
+  new Dashboard card, give it its own row range (and, if side-by-side, column range) in
+  `05-dashboard-layout.gs`; if you add a new chart, keep its helper formula in the existing
+  `DASHBOARD_CHART_HELPER_COL` band, not in columns 1-12.
+- **A card header's colored accent border and its body's border are drawn in that order, and
+  the body must never re-draw the shared top edge.** Use `drawBentoCardBodyBorder_` (not
+  `drawBentoCardBorder_`) for any body box that sits directly under a
+  `drawBentoCardHeader_`/`drawBentoCard_` header.
+- **Never compute a top-level `const` from another file's top-level `const` in Apps Script.**
+  File load order isn't guaranteed, so `const X = SOME_OTHER_FILE_CONST * 2` at the top of a
+  file can throw `ReferenceError` if that file loads first. Wrap the computation in a function
+  instead — by the time any function actually runs, every file has already loaded (see
+  `dashboardChartFullWidth_`/`dashboardChartHalfWidth_` in `10-dashboard-charts.gs`).

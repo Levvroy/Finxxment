@@ -120,11 +120,15 @@ n8n's `/goal tambah` append from ever risking the `ARRAYFORMULA`s in those colum
 
 ## Sheet: `Dashboard` (generated, not manually edited)
 
-Not a fixed-column table — `apps-script/10-dashboard-charts.gs`, `20-saldo-burnrate.gs`,
-`30-budget-vs-actual.gs`, `50-hutang-piutang.gs`, and `60-savings-goals.gs` write summary blocks
-into a fixed row layout (see `apps-script/05-dashboard-layout.gs`: saldo per sumber dana, burn
-rate, budget vs actual, hutang piutang totals, savings goals progress — all in columns A-E) and
-five charts (cash flow, kategori pie, sumber dana pie, 6-month trend line, top-5 categories
-bar), whose QUERY helper formulas live in a separate column band (from column O onward) so they
-never spill into the text blocks. Refreshed daily by a time-driven trigger, or on demand via the
-"Finxxment > Refresh Dashboard Now" menu item.
+Not a fixed-column table — a bento-style card grid across a uniform 12 columns (see
+`apps-script/05-dashboard-layout.gs` for the exact row/column plan and
+`docs/07-sheet-formulas-and-formatting.md` for the design rationale): 4 hero KPI tiles (Total
+Saldo, MTD spend, Rata-rata Harian, Proyeksi Akhir Bulan), a tile per sumber dana, a full-width
+Cash Flow chart card, two rows of half-width chart cards (Kategori/Sumber Dana pies, Trend
+Line/Top 5), a wide Budget vs Actual table card, and Hutang Piutang + Tabungan Goals cards side
+by side. Every card's borders/headers are drawn once at provisioning time
+(`apps-script/01-sheet-formatting.gs`); `10-dashboard-charts.gs`, `20-saldo-burnrate.gs`,
+`30-budget-vs-actual.gs`, `50-hutang-piutang.gs`, and `60-savings-goals.gs` only ever write
+values into that pre-drawn grid. Chart QUERY helper formulas live in a separate hidden column
+band (from column P onward) so they never spill into the visible grid. Refreshed daily by a
+time-driven trigger, or on demand via the "Finxxment > Refresh Dashboard Now" menu item.
