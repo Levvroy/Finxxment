@@ -7,7 +7,7 @@
           "message"
         ]
       },
-      "id": "11068205-4a7a-414f-b370-f7225d149938",
+      "id": "cedcc38d-ca55-4e9f-ad3a-f0ee92390639",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1,
@@ -28,31 +28,31 @@
         "assignments": {
           "assignments": [
             {
-              "id": "b512bb3a-1af6-4910-b882-42ebebc92ccc",
+              "id": "996f8d1e-6f64-49f4-b7a3-56d80dcc336e",
               "name": "OWNER_CHAT_ID",
               "value": "REPLACE_ME_OWNER_CHAT_ID",
               "type": "string"
             },
             {
-              "id": "492632ea-4c8d-410a-b530-bf08f173747f",
+              "id": "c04f0533-06f7-4e12-9798-367db9aa53c8",
               "name": "SPREADSHEET_ID",
               "value": "REPLACE_ME_SPREADSHEET_ID",
               "type": "string"
             },
             {
-              "id": "880cef4f-e680-4497-aaae-6983d9a5ef12",
+              "id": "a70e3959-5cc2-4da8-bcf2-e00ce9a6a9d8",
               "name": "DRIVE_PROOF_FOLDER_ID",
               "value": "REPLACE_ME_DRIVE_FOLDER_ID",
               "type": "string"
             },
             {
-              "id": "66457e6f-8a95-406c-bebe-1ffbd05ae874",
+              "id": "a8160d95-ccec-4c24-832c-6abeb55e5be5",
               "name": "WEBAPP_URL",
               "value": "REPLACE_ME_APPS_SCRIPT_WEBAPP_URL",
               "type": "string"
             },
             {
-              "id": "a8f5b20b-5ee1-4cd7-9db6-081292414df8",
+              "id": "9cdcc0c0-8f27-4cef-a19b-d412b74e840c",
               "name": "WEBAPP_SECRET",
               "value": "REPLACE_ME_APPS_SCRIPT_SHARED_SECRET",
               "type": "string"
@@ -61,7 +61,7 @@
         },
         "options": {}
       },
-      "id": "417ea168-7c02-4693-8f9c-06a26d176b58",
+      "id": "6c4b424b-f417-43c1-aa5b-e2593de4717d",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
@@ -81,7 +81,7 @@
           },
           "conditions": [
             {
-              "id": "bdf7a9ad-cdc0-48a6-84f3-0810056a1ae7",
+              "id": "a750f4b9-53aa-453e-b66f-57c7dc3e4e22",
               "leftValue": "={{$json.message.chat.id}}",
               "rightValue": "={{$node[\"Config\"].json.OWNER_CHAT_ID}}",
               "operator": {
@@ -94,7 +94,7 @@
         },
         "options": {}
       },
-      "id": "af1643d4-d3ae-4c98-aaaa-0ae9466d5683",
+      "id": "d56cccbf-ca82-4f2e-8e58-9a3ad23aff12",
       "name": "IF Is Owner",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -106,7 +106,7 @@
     },
     {
       "parameters": {},
-      "id": "9444ea7e-1667-4ad6-90ed-f604e19f1367",
+      "id": "d542e371-850a-40c4-bc20-6e2ab84c4d26",
       "name": "Ignore Non-Owner",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -139,7 +139,7 @@
         },
         "options": {}
       },
-      "id": "fa7b1819-730f-4583-a047-517939e27742",
+      "id": "525eca2e-0597-414d-8eba-c9d5a4176cdb",
       "name": "HTTP Request: Check Pending",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -159,7 +159,7 @@
           },
           "conditions": [
             {
-              "id": "11a51f05-6dae-4514-8864-1ad3e77d3b79",
+              "id": "de206f80-8278-421b-8b64-a8ec13a90f56",
               "leftValue": "={{$json.status}}",
               "rightValue": "Waiting",
               "operator": {
@@ -172,7 +172,7 @@
         },
         "options": {}
       },
-      "id": "4b1b368c-f886-4936-81ce-52b4bc91248d",
+      "id": "89f6a102-d9c0-48a5-9286-15e591691ae6",
       "name": "IF Has Pending",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -197,7 +197,7 @@
           }
         }
       },
-      "id": "8246888b-d1e4-4c72-bbdf-d52ac9ce0c9c",
+      "id": "9d06aa71-41f2-423e-9a18-c3db509a50e2",
       "name": "Execute Workflow: Clarification Handler",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
@@ -367,10 +367,12 @@
             }
           ]
         },
-        "fallbackOutput": "extra",
-        "options": {}
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "transaksi"
+        }
       },
-      "id": "80ef6b82-78f7-432a-8134-ab9330623d96",
+      "id": "c0e22df5-60d9-4a0f-9523-971760cbfd2e",
       "name": "Switch: Route Message",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
@@ -378,7 +380,7 @@
         1250,
         600
       ],
-      "notes": "Fallback output (no rule matched, index 9) = plain transaction text/photo input. Nine named outputs for the /commands (laporan, saldo, undo, edit, kategori, help, hutang, goal, cari)."
+      "notes": "Fallback output (no rule matched, index 9) = plain transaction text/photo input. Nine named outputs for the /commands (laporan, saldo, undo, edit, kategori, help, hutang, goal, cari). fallbackOutput MUST live inside options (n8n SwitchV3 reads options.fallbackOutput) - a top-level fallbackOutput key is silently ignored by n8n, defaulting to 'none' and dropping unmatched items."
     },
     {
       "parameters": {
@@ -390,7 +392,7 @@
           },
           "conditions": [
             {
-              "id": "2d8ab729-10e9-42c6-88c3-f0c4bf1cd272",
+              "id": "b3bce0bd-dd5c-44ea-8d08-206573592c89",
               "leftValue": "={{$json.message.photo}}",
               "rightValue": "",
               "operator": {
@@ -404,7 +406,7 @@
         },
         "options": {}
       },
-      "id": "90e158a4-c09f-46af-9fd9-1e2271fadf0d",
+      "id": "220dc1d4-cfce-4b8b-bc7a-f08e37f6a89e",
       "name": "IF Has Photo",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -422,7 +424,7 @@
         "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_TEXT_PROMPT + \"\\n\\nToday: \" + $today + \"\\n\\nUser message: \" + $json.message.text } ] } ] } }}",
         "options": {}
       },
-      "id": "6075a075-c1e7-43b1-a59e-eb41912a9e08",
+      "id": "33e8b68c-fad8-4e11-a3a5-9db78f169cd2",
       "name": "Gemini: Text Extraction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -443,7 +445,7 @@
         "language": "javaScript",
         "jsCode": "// Parses Gemini's JSON array response, strips markdown fences if present,\n// and applies a fallback shorthand-nominal normalizer (50rb/50k/1jt) in case\n// the model missed it. Returns one n8n item per transaction so downstream\n// nodes naturally iterate over multi-transaction messages.\nfunction normalizeNominal(raw) {\n  if (typeof raw === 'number') return raw;\n  if (!raw) return 0;\n  const s = String(raw).toLowerCase().replace(/[^0-9a-z.,]/g, '');\n  const m = s.match(/([0-9.,]+)(rb|ribu|k|jt|juta)?/);\n  if (!m) return 0;\n  let num = parseFloat(m[1].replace(',', '.'));\n  if (m[2] === 'rb' || m[2] === 'ribu' || m[2] === 'k') num *= 1000;\n  if (m[2] === 'jt' || m[2] === 'juta') num *= 1000000;\n  return Math.round(num);\n}\n\nconst raw = $input.first().json;\nlet text = raw.candidates ? raw.candidates[0].content.parts[0].text : JSON.stringify(raw);\ntext = text.replace(/```json|```/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  return [{ json: { geminiError: true, rawText: $('IF Has Photo').first().json.message.text } }];\n}\nif (!Array.isArray(parsed)) parsed = [parsed];\nreturn parsed.map(tx => ({ json: { ...tx, nominal: normalizeNominal(tx.nominal), chatId: $('IF Has Photo').first().json.message.chat.id, hasPhoto: !!($('IF Has Photo').first().json.message.photo) } }));\n"
       },
-      "id": "6a31ad84-57fa-4684-b2fb-0be26ff55cfb",
+      "id": "dd585da6-1297-42b3-91cd-d8a4376f9d1d",
       "name": "Code: Parse & Normalize",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -463,7 +465,7 @@
           },
           "conditions": [
             {
-              "id": "5611015a-be25-4ce7-8426-469b71283d5e",
+              "id": "60241973-4c31-47c0-bcea-ce8b07c343c5",
               "leftValue": "={{$json.geminiError}}",
               "rightValue": true,
               "operator": {
@@ -476,7 +478,7 @@
         },
         "options": {}
       },
-      "id": "7107a0cf-8671-4994-8e76-09862ad04287",
+      "id": "80e4a7ee-2fe2-4bde-be54-ea0f33fd6006",
       "name": "IF Gemini Error",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -491,7 +493,7 @@
         "language": "javaScript",
         "jsCode": "const item = $input.first().json;\nreturn [{ json: {\n  ID: $itemIndex + '-' + Date.now(),\n  'Timestamp Input': new Date().toISOString(),\n  'Tanggal Transaksi': new Date().toISOString().slice(0,10),\n  Jenis: 'Keluar',\n  Nominal: 0,\n  Kategori: 'Lain-lain',\n  'Sub-kategori': '',\n  'Tujuan/Merchant': item.rawText || '(raw text unavailable)',\n  'Sumber Dana': '',\n  'Nama Rekening/Wallet': '',\n  Catatan: 'Gemini API gagal/timeout - butuh review manual',\n  'Bukti (link)': '',\n  'Status Verifikasi': 'Perlu Review Manual',\n  'Confidence AI': 'n/a - API error',\n  'Sumber Input': 'Telegram Text'\n}}];\n"
       },
-      "id": "06843a45-bb49-4c82-863a-021ca62d2c1e",
+      "id": "38dc857c-ab8a-4a2c-b590-45e720f05e78",
       "name": "Code: Build Fallback Row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -515,7 +517,7 @@
         },
         "options": {}
       },
-      "id": "bc33a5e1-f678-4034-b265-e9455396e43d",
+      "id": "2755db4e-6b7e-4c0b-a371-39f837b2bb86",
       "name": "Sheets: Append Fallback Row",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -536,7 +538,7 @@
         "text": "⚠️ Gagal memproses otomatis (Gemini error). Pesan mentah sudah disimpan dengan status \"Perlu Review Manual\" — silakan cek & edit manual di Sheets.",
         "additionalFields": {}
       },
-      "id": "1121abc9-ea1a-4bb5-a522-79bbbaccf09e",
+      "id": "ab947742-73bb-4e3a-8d17-7bad0b27b75e",
       "name": "Telegram: Send Fallback Notice",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -561,7 +563,7 @@
           },
           "conditions": [
             {
-              "id": "a2f6b6c6-79ab-4fcc-ba48-330568847a9a",
+              "id": "3e316d69-d906-4ca5-b83e-aec046975fce",
               "leftValue": "={{$json.confidence}}",
               "rightValue": "low",
               "operator": {
@@ -574,7 +576,7 @@
         },
         "options": {}
       },
-      "id": "050de157-1b30-4410-84ac-ed627df3d641",
+      "id": "ec138f5c-03bc-452b-8447-0290b20ddd3e",
       "name": "IF Confidence Low",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -598,7 +600,7 @@
         },
         "options": {}
       },
-      "id": "05fc0fed-46a1-451f-8a34-a23e9397c9bb",
+      "id": "975f6fa9-df4b-4bcf-8b28-d1cef9fcb499",
       "name": "Sheets: Append Pending (Low Confidence)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -620,7 +622,7 @@
         "text": "Datanya kurang jelas nih 🤔 {{$json.catatan || 'Boleh dilengkapi lagi?'}} (misal: nominalnya berapa / kategori apa)",
         "additionalFields": {}
       },
-      "id": "0924ce40-3a43-4860-b70a-cc5d74b770fc",
+      "id": "c4dde4ca-9371-44f5-8c42-2138b4e667ff",
       "name": "Telegram: Ask Clarification (Low Confidence)",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -645,7 +647,7 @@
           },
           "conditions": [
             {
-              "id": "b4bc0df2-d353-4981-9c99-950a88194216",
+              "id": "9a5daf83-58b3-4468-9861-6927189d401f",
               "leftValue": "={{$json.hasPhoto}}",
               "rightValue": true,
               "operator": {
@@ -658,7 +660,7 @@
         },
         "options": {}
       },
-      "id": "571e5800-19fd-4021-b65a-271563993274",
+      "id": "681e5804-783a-4a0e-87c4-74b11c9e307f",
       "name": "IF Has Photo (2)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -673,7 +675,7 @@
         "resource": "file",
         "fileId": "={{$('Switch: Route Message').first().json.message.photo.last().file_id}}"
       },
-      "id": "aaa7259a-9541-40eb-949c-28abeb7c5e4c",
+      "id": "41cbf098-d5a2-4004-bc32-6a59f14d8ed9",
       "name": "Telegram: Get File",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -697,7 +699,7 @@
         "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_VISION_PROMPT }, { \"inline_data\": { \"mime_type\": \"image/jpeg\", \"data\": $binary.data.toString('base64') } } ] } ] } }}",
         "options": {}
       },
-      "id": "3a6f4e2b-126a-4058-9e19-a68e3a48256a",
+      "id": "fc669912-d9df-40b4-8ef1-9beec53df2cb",
       "name": "Gemini: Vision Extraction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -718,7 +720,7 @@
         "language": "javaScript",
         "jsCode": "// Tolerance values mirrored from config/mismatch-tolerance.json - keep in sync.\nconst ABS_TOLERANCE = 2000;\nconst PCT_TOLERANCE = 0.02;\nconst DATE_DIFF_WARN_DAYS = 1;\n\nconst textTx = $('IF Has Photo (2)').first().json;\nconst visionRaw = $input.first().json;\nlet vision;\ntry {\n  let t = (visionRaw.candidates ? visionRaw.candidates[0].content.parts[0].text : '{}').replace(/```json|```/g, '').trim();\n  vision = JSON.parse(t);\n} catch (e) {\n  vision = { nominal_dari_bukti: 0, tanggal_dari_bukti: '', merchant_dari_bukti: '', metode_dari_bukti: '' };\n}\n\nconst diff = Math.abs((textTx.nominal || 0) - (vision.nominal_dari_bukti || 0));\nconst pct = textTx.nominal ? diff / textTx.nominal : 1;\nconst nominalMismatch = diff > ABS_TOLERANCE && pct > PCT_TOLERANCE;\n\nlet dateDiffDays = 0;\nif (textTx.tanggal && vision.tanggal_dari_bukti) {\n  dateDiffDays = Math.abs((new Date(textTx.tanggal) - new Date(vision.tanggal_dari_bukti)) / 86400000);\n}\nconst dateWarning = !nominalMismatch && dateDiffDays > DATE_DIFF_WARN_DAYS;\n\nlet status = 'ok';\nif (nominalMismatch) status = 'mismatch';\nelse if (dateWarning) status = 'date-warning';\n\nreturn [{ json: { ...textTx, vision, status, diff, dateDiffDays } }];\n"
       },
-      "id": "5f1aed08-7715-4347-baa6-ceeb38224de3",
+      "id": "0a7ecc64-6479-4140-aaae-331ba7411cb6",
       "name": "Code: Compare Text vs Vision",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -737,7 +739,7 @@
           },
           "conditions": [
             {
-              "id": "106f25c7-4eef-4752-a288-8d6b420402f1",
+              "id": "56e07b44-6078-4322-a8ed-d8f763374dad",
               "leftValue": "={{$json.status}}",
               "rightValue": "mismatch",
               "operator": {
@@ -750,7 +752,7 @@
         },
         "options": {}
       },
-      "id": "e99d0340-d81b-4978-a3ff-b7da55f51602",
+      "id": "fff5730f-4f0a-49a2-8303-5616e0e62e8c",
       "name": "IF Mismatch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -774,7 +776,7 @@
         },
         "options": {}
       },
-      "id": "a3af7a17-e5b6-4ae7-b21d-b4466fbfdda3",
+      "id": "167cec24-07cc-4050-b7d1-e6656d2a8c88",
       "name": "Sheets: Append Pending (Mismatch)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -796,7 +798,7 @@
         "text": "Nominal di teks (Rp{{$json.nominal}}) beda sama di bukti (Rp{{$json.vision.nominal_dari_bukti}}) nih. Mana yang bener? Balas dengan nominal yang benar, atau ketik 'teks'/'bukti'.",
         "additionalFields": {}
       },
-      "id": "ffc549fb-d7de-43ac-8404-8f584d3c2fcf",
+      "id": "1e67fc30-b622-4c99-9906-71c189ac7e76",
       "name": "Telegram: Ask Clarification (Mismatch)",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -816,7 +818,7 @@
         "assignments": {
           "assignments": [
             {
-              "id": "bef82703-0e43-435e-bd2c-5e965451e7a0",
+              "id": "730ceae0-de9d-4b70-9905-949acb90092e",
               "name": "catatan",
               "value": "={{$json.catatan}} [Peringatan: tanggal bukti berbeda {{$json.dateDiffDays}} hari]",
               "type": "string"
@@ -827,7 +829,7 @@
           "includeOtherFields": true
         }
       },
-      "id": "92630b3e-4ea7-473b-b06c-f83a049ab9f8",
+      "id": "34ad54ad-1953-4e6a-be9e-50af30f3c101",
       "name": "Set: Annotate Date Warning",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3,
@@ -853,7 +855,7 @@
           "mode": "id"
         }
       },
-      "id": "2de29ca4-c80b-427b-9b7f-60583807bf71",
+      "id": "d3ba46ae-86b3-46b7-836c-4c5062cf4338",
       "name": "Google Drive: Upload Photo",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
@@ -874,7 +876,7 @@
         "language": "javaScript",
         "jsCode": "const item = $input.first().json;\nconst drive = $input.first().binary ? $input.first().json : null;\nreturn [{ json: {\n  ID: (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()),\n  'Timestamp Input': new Date().toISOString(),\n  'Tanggal Transaksi': item.tanggal,\n  Jenis: item.jenis === 'masuk' ? 'Masuk' : 'Keluar',\n  Nominal: item.nominal,\n  Kategori: item.kategori,\n  'Sub-kategori': item.sub_kategori || '',\n  'Tujuan/Merchant': item.tujuan,\n  'Sumber Dana': item.sumber_dana,\n  'Nama Rekening/Wallet': item.nama_rekening || '',\n  Catatan: item.catatan || '',\n  'Bukti (link)': item.webViewLink || '',\n  'Status Verifikasi': item.hasPhoto ? (item.status === 'date-warning' ? 'Mismatch-Resolved' : 'Verified') : 'Unverified',\n  'Confidence AI': item.confidence,\n  'Sumber Input': item.hasPhoto ? 'Telegram Text+Foto' : 'Telegram Text'\n}}];\n"
       },
-      "id": "0c7ac428-c095-4f60-9c7b-1c48bdd920ae",
+      "id": "959d4f0a-e70c-4179-8109-d4716c15b4da",
       "name": "Code: Build Row Object",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -898,7 +900,7 @@
         },
         "options": {}
       },
-      "id": "e8aabe38-5da9-4d98-a840-b807e5358b1f",
+      "id": "6b6ff8db-036e-4928-8bb2-5f1c7d70dbb2",
       "name": "Google Sheets: Append Row",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -919,7 +921,7 @@
         "text": "✅ Tercatat: Rp{{$json.Nominal}} - {{$json['Tujuan/Merchant']}} - {{$json['Sumber Dana']}} - {{$json['Tanggal Transaksi']}}",
         "additionalFields": {}
       },
-      "id": "14522f7f-6dd1-4fa6-9d55-f15b94278a21",
+      "id": "10eb5aca-c50a-4658-97db-f0c50bbeb241",
       "name": "Telegram: Send Confirmation",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -957,7 +959,7 @@
         },
         "options": {}
       },
-      "id": "39594efc-4a03-45e2-8f18-f1db6917cb29",
+      "id": "681408eb-2fc9-4efd-912e-ce959e183c15",
       "name": "HTTP: Budget Check",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -977,7 +979,7 @@
           },
           "conditions": [
             {
-              "id": "03fd4ec1-5e3c-4703-a83e-db0d70d58709",
+              "id": "27224b17-54c2-4a04-b7df-9e91e238e2c3",
               "leftValue": "={{$json.alert}}",
               "rightValue": true,
               "operator": {
@@ -990,7 +992,7 @@
         },
         "options": {}
       },
-      "id": "ec766449-8f35-46c8-8806-08b31032d875",
+      "id": "6f0edeee-dfa0-4384-b045-191740ff0c3b",
       "name": "IF Budget Alert",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1005,7 +1007,7 @@
         "text": "{{$json.level === 'over' ? '🚨' : '⚠️'}} Budget {{$json.kategori}} sudah {{$json.percentUsed}}% terpakai (Rp{{$json.actual}} dari Rp{{$json.budget}}).",
         "additionalFields": {}
       },
-      "id": "21bb99ac-b09e-4d6b-a910-2fc97dfa05b2",
+      "id": "52a5e3a0-efad-4098-a4a5-7475ccb788d8",
       "name": "Telegram: Send Budget Alert",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1025,7 +1027,7 @@
         "language": "javaScript",
         "jsCode": "const text = $json.message.text.toLowerCase();\nlet period = 'bulan_ini';\nif (text.includes('minggu')) period = 'minggu_ini';\nif (text.includes('bulan lalu')) period = 'bulan_lalu';\nreturn [{ json: { period, chatId: $json.message.chat.id } }];\n"
       },
-      "id": "80707760-a882-4c62-adbd-08adedef6392",
+      "id": "ffc70570-785d-4158-846c-66fa2ec385d7",
       "name": "Code: Parse Period Arg",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1049,7 +1051,7 @@
         },
         "options": {}
       },
-      "id": "9b6cdff1-4020-495b-a693-005731ec192f",
+      "id": "a879e03b-be88-43fa-be26-60da656fc19c",
       "name": "Sheets: Read Transaksi (Laporan)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1070,7 +1072,7 @@
         "language": "javaScript",
         "jsCode": "const period = $('Code: Parse Period Arg').first().json.period;\nconst rows = $input.all().map(i => i.json);\nconst now = new Date();\nfunction inPeriod(dateStr) {\n  const d = new Date(dateStr);\n  if (period === 'minggu_ini') { const diff = (now - d) / 86400000; return diff >= 0 && diff <= 7; }\n  if (period === 'bulan_lalu') { const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear(); }\n  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();\n}\nconst filtered = rows.filter(r => inPeriod(r['Tanggal Transaksi']));\nconst totalMasuk = filtered.filter(r => r.Jenis === 'Masuk').reduce((s, r) => s + Number(r.Nominal || 0), 0);\nconst totalKeluar = filtered.filter(r => r.Jenis === 'Keluar').reduce((s, r) => s + Number(r.Nominal || 0), 0);\nconst byKategori = {};\nfiltered.filter(r => r.Jenis === 'Keluar').forEach(r => { byKategori[r.Kategori] = (byKategori[r.Kategori] || 0) + Number(r.Nominal || 0); });\nconst topKategori = Object.entries(byKategori).sort((a, b) => b[1] - a[1]).slice(0, 5);\nreturn [{ json: { period, totalMasuk, totalKeluar, topKategori } }];\n"
       },
-      "id": "61b4436c-6ec4-4983-be4a-c068b17390f8",
+      "id": "b15791ee-1e03-4ead-8190-176df039218a",
       "name": "Code: Aggregate Laporan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1100,7 +1102,7 @@
           }
         }
       },
-      "id": "eb6bd4ac-2731-4ec1-8d56-588f77e2f516",
+      "id": "203446ae-1e35-4ae8-9c31-ec383a0eab1d",
       "name": "HTTP: QuickChart (Laporan)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -1116,7 +1118,7 @@
         "text": "📊 Laporan {{$('Code: Aggregate Laporan').first().json.period}}\\nMasuk: Rp{{$('Code: Aggregate Laporan').first().json.totalMasuk}}\\nKeluar: Rp{{$('Code: Aggregate Laporan').first().json.totalKeluar}}\\nTop kategori: {{$('Code: Aggregate Laporan').first().json.topKategori.map(k => k[0] + ' (Rp' + k[1] + ')').join(', ')}}",
         "additionalFields": {}
       },
-      "id": "d0b09ea7-5571-4600-8cd1-3d4e4bd2db37",
+      "id": "30c8f593-e9e6-4377-a6f3-4efa2302e959",
       "name": "Telegram: Send Laporan Text",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1138,7 +1140,7 @@
         "binaryData": true,
         "additionalFields": {}
       },
-      "id": "b7bec398-6ac7-4861-99c5-f3b9158a2f64",
+      "id": "9712f24a-7b0b-4529-8055-d945d1f762c9",
       "name": "Telegram: Send Laporan Chart",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1172,7 +1174,7 @@
         },
         "options": {}
       },
-      "id": "570ed48f-31da-4ac9-9ccd-34f562ab99ea",
+      "id": "b93c1db5-5c1f-4d0b-a610-e4dad2d77312",
       "name": "HTTP: Apps Script Saldo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -1188,7 +1190,7 @@
         "text": "💰 Saldo per sumber dana:\\n{{ Object.entries($json.saldoPerSumberDana || {}).map(([k,v]) => k + ': Rp' + v).join('\\n') }}",
         "additionalFields": {}
       },
-      "id": "93d1cf22-55db-436d-b6bc-c6b9d98dbdc3",
+      "id": "97aabda6-156e-41af-9dd3-4de88164ff2a",
       "name": "Telegram: Send Saldo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1218,7 +1220,7 @@
         },
         "options": {}
       },
-      "id": "de04d4a3-f6da-4a7a-b367-aef43b9b74d3",
+      "id": "d8cfaccd-a48b-417d-a681-1906bd9d5352",
       "name": "Sheets: Find Last Row",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1250,7 +1252,7 @@
         "startIndex": "={{$json.row_number - 1}}",
         "numberOfRows": 1
       },
-      "id": "1e2b042b-b100-4e66-b2f7-ceb4fb597ca6",
+      "id": "490f9651-7612-4f81-bc5f-6daeedfdd0d3",
       "name": "Sheets: Delete Last Row",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1271,7 +1273,7 @@
         "text": "🗑️ Transaksi terakhir dihapus: Rp{{$json.Nominal}} - {{$json['Tujuan/Merchant']}}",
         "additionalFields": {}
       },
-      "id": "9ecc1744-3eaf-476b-88a7-e80c577a96df",
+      "id": "10008f66-8aa3-4ee3-ac00-f27916ed0b18",
       "name": "Telegram: Confirm Undo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1291,7 +1293,7 @@
         "language": "javaScript",
         "jsCode": "// '/edit <id> <field>=<value> [<field2>=<value2> ...]'\nconst parts = $json.message.text.trim().split(/\\s+/);\nconst id = parts[1];\nconst fields = {};\nparts.slice(2).forEach(p => { const [k, v] = p.split('='); if (k && v) fields[k] = v; });\nreturn [{ json: { id, fields, hasFields: Object.keys(fields).length > 0, chatId: $json.message.chat.id } }];\n"
       },
-      "id": "d6adf1a9-abdb-4460-8716-a9455d601d92",
+      "id": "a00daeb3-1b3e-47c2-9588-e032f3fb1a49",
       "name": "Code: Parse Edit Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1310,7 +1312,7 @@
           },
           "conditions": [
             {
-              "id": "ac5cbf5d-0485-4185-8b09-ad1b0637cfa6",
+              "id": "772df92e-2a7e-49ed-840b-e10203b5fe23",
               "leftValue": "={{$json.hasFields}}",
               "rightValue": true,
               "operator": {
@@ -1323,7 +1325,7 @@
         },
         "options": {}
       },
-      "id": "dfe17fd3-b368-4ff3-a3b3-235f7c946f20",
+      "id": "8ebd0294-242b-441a-b03f-143a17547927",
       "name": "IF Edit Has Fields",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1355,7 +1357,7 @@
         },
         "options": {}
       },
-      "id": "d6f5ff52-2b66-4902-a33b-d74148954af0",
+      "id": "06e181d2-39ae-420d-822b-31adcb2078d6",
       "name": "Sheets: Find Row By ID",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1391,7 +1393,7 @@
         },
         "options": {}
       },
-      "id": "1d82a7b5-ac2e-403c-9017-217397255fad",
+      "id": "7833fdfe-7179-4818-ba6a-e26489792dde",
       "name": "Sheets: Update Row",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1412,7 +1414,7 @@
         "text": "✏️ Transaksi {{$('Code: Parse Edit Args').first().json.id}} diperbarui.",
         "additionalFields": {}
       },
-      "id": "f4cc8c1e-ae15-428d-8820-03820f21d710",
+      "id": "6b6a12c1-77bd-4c40-9516-3408732698fa",
       "name": "Telegram: Confirm Edit",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1442,7 +1444,7 @@
         },
         "options": {}
       },
-      "id": "c6759a2f-7106-4eda-b3ae-9f95ff48be28",
+      "id": "f3454ff8-788f-4218-bcc7-01083ad3c958",
       "name": "Sheets: Append Pending (Edit Needs Field)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1464,7 +1466,7 @@
         "text": "Mau ubah apa untuk transaksi {{$('Code: Parse Edit Args').first().json.id}}? Balas dengan format field=value (misal: nominal=60000).",
         "additionalFields": {}
       },
-      "id": "b1b4e2a2-b363-4831-95de-cc380063a82f",
+      "id": "ad725ad8-8b41-4dda-9938-a0185a8fadb7",
       "name": "Telegram: Ask What To Edit",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1485,7 +1487,7 @@
         "text": "📂 Kategori: Makan & Minum, Transportasi, Kos/Tempat Tinggal, Kuliah/Akademik, Produksi/Event, Peralatan, Hiburan/Hobi, Kopi/Espresso Setup, Kesehatan, Belanja Pribadi, Transfer/Pinjam, Tabungan/Investasi, Lain-lain.\\nSumber dana: Cash, QRIS, Debit, E-wallet, Transfer Bank, Kredit.",
         "additionalFields": {}
       },
-      "id": "61a62f27-298b-4344-bfcd-6297ca5e7b21",
+      "id": "9df1162c-4ae3-4556-9f55-8445a46cd25b",
       "name": "Telegram: Send Kategori List",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1507,7 +1509,7 @@
         "text": "🤖 finxxment bot\\nKetik transaksi natural, misal: 'keluar 50000 makan siang qris'. Bisa lampirkan foto bukti.\\nCommand: /laporan [periode], /saldo, /undo, /edit [id] [field=value], /kategori, /hutang [tambah|lunas ...], /goal [tambah ...], /cari <keyword>, /help",
         "additionalFields": {}
       },
-      "id": "29d6077f-e7f6-43b8-aec1-a27711d6ad7e",
+      "id": "2fcad587-fa95-4d45-b372-bdf735e72aae",
       "name": "Telegram: Send Help",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1527,7 +1529,7 @@
         "language": "javaScript",
         "jsCode": "// '/hutang' (list), '/hutang tambah <piutang|utang> <nama> <nominal> [jatuh_tempo YYYY-MM-DD]',\n// '/hutang lunas <id>'\nconst parts = $json.message.text.trim().split(/\\s+/);\nconst sub = (parts[1] || 'list').toLowerCase();\nlet mode = 'list';\nlet arah = '', nama = '', nominal = 0, jatuhTempo = '', id = '';\nif (sub === 'tambah') {\n  mode = 'tambah';\n  arah = (parts[2] || '').toLowerCase() === 'utang' ? 'Utang' : 'Piutang';\n  nama = parts[3] || '';\n  nominal = parseInt((parts[4] || '0').replace(/[^0-9]/g, ''), 10) || 0;\n  jatuhTempo = parts[5] || '';\n} else if (sub === 'lunas') {\n  mode = 'lunas';\n  id = parts[2] || '';\n}\nreturn [{ json: { mode, arah, nama, nominal, jatuhTempo, id } }];\n"
       },
-      "id": "6755595f-2b26-4877-a901-81d492fab458",
+      "id": "f821f15b-7954-4004-8b8f-f81f812abf57",
       "name": "Code: Parse Hutang Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1577,10 +1579,12 @@
             }
           ]
         },
-        "fallbackOutput": "extra",
-        "options": {}
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "list"
+        }
       },
-      "id": "0f50df81-4e39-463e-93a6-f4421f72a6d5",
+      "id": "18769be8-d7d9-43f0-80cb-7b162892966c",
       "name": "Switch: Hutang Mode",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
@@ -1588,7 +1592,7 @@
         1750,
         3000
       ],
-      "notes": "Fallback (index 2) = plain '/hutang' list request."
+      "notes": "Fallback (index 2) = plain '/hutang' list request. fallbackOutput lives inside options - see note on 'Switch: Route Message'."
     },
     {
       "parameters": {
@@ -1608,7 +1612,7 @@
         },
         "options": {}
       },
-      "id": "2f49ff12-2f69-4bcc-9efd-e29cca712bc5",
+      "id": "04d03b9f-c5eb-4fd7-84f0-b66358321cb7",
       "name": "Sheets: Append Hutang Piutang",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1629,7 +1633,7 @@
         "text": "📝 Dicatat: {{$json.Arah}} {{$json['Nama Pihak']}} Rp{{$json.Nominal}}{{$json['Jatuh Tempo'] ? ' (jatuh tempo ' + $json['Jatuh Tempo'] + ')' : ''}}",
         "additionalFields": {}
       },
-      "id": "172638c0-7a87-4579-b9b2-852c6aa517b8",
+      "id": "8bc447d9-29f6-421b-b7ca-a9d5813adb14",
       "name": "Telegram: Confirm Hutang Added",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1667,7 +1671,7 @@
         },
         "options": {}
       },
-      "id": "d35ee367-c3eb-4c81-bd51-6929de5dfdb5",
+      "id": "c2e9968e-6f20-41e9-a92e-0dd51a91c062",
       "name": "Sheets: Find Hutang By ID",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1703,7 +1707,7 @@
         },
         "options": {}
       },
-      "id": "25da6295-733e-4f0d-83df-77e86cc5deda",
+      "id": "505fd170-ed6e-4fb8-96e1-4056ae2d19ea",
       "name": "Sheets: Mark Hutang Lunas",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1724,7 +1728,7 @@
         "text": "✅ {{$json['Nama Pihak']}} - Rp{{$json.Nominal}} ditandai Lunas.",
         "additionalFields": {}
       },
-      "id": "ddc0f446-40a6-449a-91a9-a2c85c9d27e5",
+      "id": "479d69d8-6780-49a0-a28f-18ff28f23992",
       "name": "Telegram: Confirm Hutang Lunas",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1758,7 +1762,7 @@
         },
         "options": {}
       },
-      "id": "f9bb147b-dea0-4b13-9c11-ef307719fcff",
+      "id": "7cb7a15e-a016-4c11-a0f5-8d333ac9a20a",
       "name": "HTTP: Apps Script Hutang Piutang",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -1773,7 +1777,7 @@
         "text": "📒 Piutang (orang berhutang ke saya): Rp{{$json.totalPiutang}}\\nUtang (saya berhutang): Rp{{$json.totalUtang}}\\n{{ $json.overdue.length ? 'Jatuh tempo lewat: ' + $json.overdue.map(o => o.nama + ' Rp' + o.nominal).join(', ') : 'Tidak ada yang lewat jatuh tempo.' }}",
         "additionalFields": {}
       },
-      "id": "49f6a13c-ea19-47cd-a29b-8015ba2bc71a",
+      "id": "48cfe659-0b4d-44b2-aee0-83ac78bb4cd9",
       "name": "Telegram: Send Hutang Piutang",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1793,7 +1797,7 @@
         "language": "javaScript",
         "jsCode": "// '/goal' (list progress), '/goal tambah <nama> <target> [tanggal_target YYYY-MM-DD]'\nconst parts = $json.message.text.trim().split(/\\s+/);\nconst sub = (parts[1] || 'list').toLowerCase();\nlet mode = 'list';\nlet nama = '', target = 0, tanggalTarget = '';\nif (sub === 'tambah') {\n  mode = 'tambah';\n  nama = parts[2] || '';\n  target = parseInt((parts[3] || '0').replace(/[^0-9]/g, ''), 10) || 0;\n  tanggalTarget = parts[4] || '';\n}\nreturn [{ json: { mode, nama, target, tanggalTarget } }];\n"
       },
-      "id": "d7fe6b73-e26e-4e5c-bf24-5367623e261c",
+      "id": "b0d820d1-9ed0-47c3-9b5f-5f3273819233",
       "name": "Code: Parse Goal Args",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1812,7 +1816,7 @@
           },
           "conditions": [
             {
-              "id": "25cd8ab5-bc52-412f-881e-f471103db2a2",
+              "id": "382c2da8-bcba-4d77-bfeb-ea5550a8de4c",
               "leftValue": "={{$json.mode}}",
               "rightValue": "tambah",
               "operator": {
@@ -1825,7 +1829,7 @@
         },
         "options": {}
       },
-      "id": "f10d5c0a-0f8a-4cd0-aed3-3c04da8ddf26",
+      "id": "4a4c5749-e005-4ecf-8240-3bf100b1a342",
       "name": "IF Goal Add",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1852,7 +1856,7 @@
         },
         "options": {}
       },
-      "id": "2ce9388d-acb1-4372-b511-a66cff918321",
+      "id": "f940b54f-f609-40b3-a619-4861bb128635",
       "name": "Sheets: Append Goal",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -1874,7 +1878,7 @@
         "text": "🎯 Goal baru: {{$json['Nama Goal']}} - target Rp{{$json['Target Nominal']}}. Untuk nabung, catat transaksi dengan kategori 'Tabungan/Investasi' dan sub-kategori '{{$json['Nama Goal']}}'.",
         "additionalFields": {}
       },
-      "id": "4fb3682b-82d9-4b17-a806-d63091ed2c99",
+      "id": "93b4cd5e-5093-4b71-85e7-be5b24e55e2c",
       "name": "Telegram: Confirm Goal Added",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1908,7 +1912,7 @@
         },
         "options": {}
       },
-      "id": "38e9d843-64cf-4231-bc90-065eeac88642",
+      "id": "b3c26179-711f-4cbf-8779-37ed736d771b",
       "name": "HTTP: Apps Script Savings Goals",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -1923,7 +1927,7 @@
         "text": "🎯 Progress tabungan:\\n{{ $json.goals.map(g => g.nama + ': Rp' + g.terkumpul + ' / Rp' + g.target + ' (' + g.progress + '%) - ' + g.status).join('\\n') }}",
         "additionalFields": {}
       },
-      "id": "1342b61a-5c62-4d27-b8bc-69bfaf6fdfb4",
+      "id": "bf75ff52-71f6-4b2c-b6b3-71daed76f483",
       "name": "Telegram: Send Goal Progress",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1943,7 +1947,7 @@
         "language": "javaScript",
         "jsCode": "const keyword = $json.message.text.trim().split(/\\s+/).slice(1).join(' '); return [{ json: { keyword } }];"
       },
-      "id": "412629a1-f5cf-442a-81cf-b212daa25801",
+      "id": "6ae6510a-efd1-4db9-b3ba-7fd34abb4c39",
       "name": "Code: Parse Cari Keyword",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1975,7 +1979,7 @@
         },
         "options": {}
       },
-      "id": "75191c2a-cfa6-40c5-9da9-5893be6d36f8",
+      "id": "7e8073c9-9b3f-4492-90db-4f84c7d2f18e",
       "name": "HTTP: Apps Script Search",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
@@ -1990,7 +1994,7 @@
         "text": "🔍 Hasil pencarian ({{$json.results.length}}):\\n{{ $json.results.length ? $json.results.map(r => r['Tanggal Transaksi'] + ' - Rp' + r.Nominal + ' - ' + r['Tujuan/Merchant']).join('\\n') : 'Tidak ditemukan.' }}",
         "additionalFields": {}
       },
-      "id": "fdc6c9fb-ce19-42c8-adcc-ae09c769c7d6",
+      "id": "c6785b8b-b777-4e74-b552-96048cbf2cb2",
       "name": "Telegram: Send Search Results",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,

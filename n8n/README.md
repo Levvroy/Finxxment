@@ -1,6 +1,6 @@
 # n8n Workflows
 
-Four workflow exports, meant to be imported into your own n8n instance (n8n > Workflows >
+Five workflow exports, meant to be imported into your own n8n instance (n8n > Workflows >
 Import from File). None of these are active/tested — they were authored without a live n8n
 instance or real credentials, so treat them as a strong starting point to review and adjust in
 the n8n editor, not a guaranteed one-click deploy. See `docs/06-verification-checklist.md` for
@@ -58,6 +58,32 @@ of normal command/transaction handling. Full design and state diagram:
 The HTTP Request nodes that call Gemini reference prompt text that should be pasted from
 `n8n/prompts/*.md` into the node (or into a Config field the node reads). They aren't fetched
 at runtime. If you edit a prompt, remember to re-paste it into the corresponding node.
+
+## Switch node gotcha: `fallbackOutput` must live inside `options`
+
+Both `Switch: Route Message` and `Switch: Hutang Mode` route on named rules
+(`mode: "rules"`) plus a catch-all "everything else" output for plain transaction text /
+the bare `/hutang` list request. In n8n's actual `SwitchV3` node, that catch-all setting —
+`fallbackOutput: "extra"` — **must be nested inside the node's `options` collection**:
+
+```json
+"parameters": {
+  "mode": "rules",
+  "rules": { "values": [ ... ] },
+  "options": { "fallbackOutput": "extra", "renameFallbackOutput": "transaksi" }
+}
+```
+
+Putting `fallbackOutput` as a top-level key (a sibling of `rules`, outside `options`) is a
+subtle, easy mistake — the node still imports and runs without any error, the execution shows
+**Succeeded**, but n8n's `execute()` reads `options.fallbackOutput`, finds nothing there,
+silently defaults to `'none'`, and drops every item that doesn't match a named rule. The
+symptom is exactly "the Switch node succeeds but nothing downstream ever lights up" for the
+most common case (plain transaction text) — this is precisely the bug that shipped in an
+earlier version of `01-main-input-handler.json` and was only caught by checking n8n's actual
+`SwitchV3.node.ts` source, not by JSON schema/connection validation alone (a connection to the
+fallback output can be wired correctly and still never fire if this option is misplaced). If
+you add another Switch node with a fallback output, double-check this placement.
 
 ## `/undo` and `/edit` notes
 
