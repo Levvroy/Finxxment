@@ -31,7 +31,8 @@ must match what's referenced in the workflow JSON's `credentials` blocks, and ar
 | Credential name | Type | Used for |
 |---|---|---|
 | `Finxxment Telegram Bot` | Telegram API | Trigger + all Telegram send/get-file nodes |
-| `Finxxment Gemini API` | HTTP Header Auth (`x-goog-api-key`) or Google PaLM/Gemini credential if your n8n version has a native node | Text/vision extraction, scheduled insight |
+| `Finxxment Groq API` | HTTP Header Auth (header `Authorization`, value `Bearer <key>`) | Text extraction (`Groq: Text Extraction`) |
+| `Finxxment Gemini API` | HTTP Header Auth (`x-goog-api-key`) or Google PaLM/Gemini credential if your n8n version has a native node | Vision extraction, scheduled insight |
 | `Finxxment Google Sheets` | Google Sheets OAuth2 | All Sheets read/append/update/delete nodes |
 | `Finxxment Google Drive` | Google Drive OAuth2 | Proof-photo upload, monthly xlsx export |
 
@@ -55,9 +56,31 @@ of normal command/transaction handling. Full design and state diagram:
 
 ## Gemini prompts live in `n8n/prompts/`
 
-The HTTP Request nodes that call Gemini reference prompt text that should be pasted from
-`n8n/prompts/*.md` into the node (or into a Config field the node reads). They aren't fetched
-at runtime. If you edit a prompt, remember to re-paste it into the corresponding node.
+The HTTP Request nodes that call Gemini or Groq reference prompt text that should be pasted
+from `n8n/prompts/*.md` into the node (or into a Config field the node reads). They aren't
+fetched at runtime. If you edit a prompt, remember to re-paste it into the corresponding node.
+Files are still named `gemini-*.md` for historical reasons — the prompt text itself is
+extraction instructions, not tied to any specific model provider, so `gemini-text-extraction.md`
+is what's used by `Code: Build Groq Text Body` too.
+
+## Text extraction uses Groq, not Gemini (quota workaround)
+
+`Groq: Text Extraction` (formerly `Gemini: Text Extraction`) was switched from Gemini to Groq's
+OpenAI-compatible endpoint because the Gemini free-tier project used during setup had a `0`
+quota grant for `generate_content_free_tier_requests` — a Google Cloud/API-key provisioning
+issue, not something fixable in the workflow. `Gemini: Vision Extraction` (photo verification)
+still uses Gemini, since Groq's free `llama-3.3-70b-versatile` model is text-only.
+
+- Endpoint: `https://api.groq.com/openai/v1/chat/completions`
+- Model: `llama-3.3-70b-versatile`
+- Auth: `Authorization: Bearer <key>` via the `Finxxment Groq API` HTTP Header Auth credential
+- Request body: `{ model, messages: [{ role: "user", content: "<prompt>\n\nToday: ...\n\nUser message: ..." }] }`,
+  built by `Code: Build Groq Text Body` into a `groqTextRequestBody` string field
+- Response shape differs from Gemini: Groq/OpenAI returns `choices[0].message.content` instead
+  of Gemini's `candidates[0].content.parts[0].text`. `Code: Parse & Normalize` reads
+  `raw.choices[0].message.content` now — if you ever swap providers again, this is the line to
+  change. The downstream field is still named `geminiError` for backward compatibility with the
+  `IF Gemini Error` node; it just means "text-extraction API error" regardless of provider.
 
 ## Switch node gotcha: `fallbackOutput` must live inside `options`
 
@@ -87,9 +110,10 @@ you add another Switch node with a fallback output, double-check this placement.
 
 ## HTTP Request body gotcha: avoid `specifyBody: "json"` + `jsonBody` for expression-built bodies
 
-`Gemini: Text Extraction` and `Gemini: Vision Extraction` build their request body from an
-expression rather than a static value. Two things went wrong here, in order, on n8n Cloud
-2.28.7 — worth documenting fully since neither failure was visible from the JSON alone:
+`Groq: Text Extraction` (originally `Gemini: Text Extraction` — see the section above on the
+provider switch) and `Gemini: Vision Extraction` build their request body from an expression
+rather than a static value. Two things went wrong here, in order, on n8n Cloud 2.28.7 — worth
+documenting fully since neither failure was visible from the JSON alone:
 
 1. **The bare `{{ {...} }}` object-literal shortcut is unreliable.** The HTTP Request node's
    `jsonBody` field (`specifyBody: "json"`) has a documented shortcut: if the field's *entire*
@@ -114,14 +138,14 @@ reads from the plain **`"string"`-typed** `body` field instead:
   "sendBody": true,
   "contentType": "raw",
   "rawContentType": "application/json",
-  "body": "={{ $json.geminiTextRequestBody }}"
+  "body": "={{ $json.groqTextRequestBody }}"
 }
 ```
 
-For `Gemini: Text Extraction`, the request body is now built in a preceding **Code node**
-(`Code: Build Gemini Text Body`) as plain, unambiguous JavaScript, ending in
+For `Groq: Text Extraction`, the request body is now built in a preceding **Code node**
+(`Code: Build Groq Text Body`) as plain, unambiguous JavaScript, ending in
 `JSON.stringify(...)`, and written onto the item as a single string field
-(`geminiTextRequestBody`). The HTTP node's `body` field then does nothing more than reference
+(`groqTextRequestBody`). The HTTP node's `body` field then does nothing more than reference
 that one field — the simplest, most common expression pattern in n8n (reference a single
 upstream value), deliberately chosen because it can't hit the same "whole-field-expression on a
 non-string-typed parameter" edge case. `Gemini: Vision Extraction` keeps its body construction
