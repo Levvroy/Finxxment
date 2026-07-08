@@ -85,36 +85,54 @@ earlier version of `01-main-input-handler.json` and was only caught by checking 
 fallback output can be wired correctly and still never fire if this option is misplaced). If
 you add another Switch node with a fallback output, double-check this placement.
 
-## HTTP Request `jsonBody` gotcha: don't rely on the bare `{{ {...} }}` object-literal shortcut
+## HTTP Request body gotcha: avoid `specifyBody: "json"` + `jsonBody` for expression-built bodies
 
-`Gemini: Text Extraction` and `Gemini: Vision Extraction` build their request body with a
-single whole-field expression. n8n's HTTP Request node has a documented shortcut: if a
-JSON-mode body field's *entire* value is one `{{ ... }}` expression, and that expression
-evaluates to a JS object, n8n is supposed to use the object directly instead of requiring a
-JSON string. That auto-detection has proven fragile across n8n versions — on n8n Cloud
-2.28.7 it resolved to the literal string `"undefined"`, which then failed with `The value in
-the "JSON Body" field is not valid JSON` / `"undefined" is not valid JSON"`, even though the
-node imported and looked correctly configured.
+`Gemini: Text Extraction` and `Gemini: Vision Extraction` build their request body from an
+expression rather than a static value. Two things went wrong here, in order, on n8n Cloud
+2.28.7 — worth documenting fully since neither failure was visible from the JSON alone:
 
-The fix is to stop depending on that shortcut and force the field to always resolve to a
-plain string containing valid JSON, by wrapping the object literal in `JSON.stringify(...)`:
+1. **The bare `{{ {...} }}` object-literal shortcut is unreliable.** The HTTP Request node's
+   `jsonBody` field (`specifyBody: "json"`) has a documented shortcut: if the field's *entire*
+   value is one `{{ ... }}` expression that evaluates to a JS object, n8n is supposed to use
+   the object directly instead of requiring a JSON string. On this instance it resolved to the
+   literal string `"undefined"` instead, which then failed with `The value in the "JSON Body"
+   field is not valid JSON` / `"undefined" is not valid JSON`.
+2. **Wrapping in `JSON.stringify(...)` inside `jsonBody` still wasn't enough.** The obvious fix
+   — `={{ JSON.stringify({ "contents": [...] }) }}`, which always evaluates to a plain string —
+   still hit the exact same error. `jsonBody`'s declared parameter type is `"json"` (not
+   `"string"`), and something in how this n8n version resolves whole-expression values for a
+   `"json"`-typed field discarded the result before the node's own code ever saw it — the field
+   type itself was the problem, not the expression.
 
+The actual fix was to stop using `specifyBody: "json"` / `jsonBody` altogether and switch the
+node to **`contentType: "raw"`**, which uses a completely different, much simpler code path in
+the HTTP Request node (`requestOptions.body = body` — no `JSON.parse` involved at all) and
+reads from the plain **`"string"`-typed** `body` field instead:
+
+```json
+"parameters": {
+  "sendBody": true,
+  "contentType": "raw",
+  "rawContentType": "application/json",
+  "body": "={{ $json.geminiTextRequestBody }}"
+}
 ```
-={{ JSON.stringify({ "contents": [ ... ] }) }}
-```
 
-instead of:
+For `Gemini: Text Extraction`, the request body is now built in a preceding **Code node**
+(`Code: Build Gemini Text Body`) as plain, unambiguous JavaScript, ending in
+`JSON.stringify(...)`, and written onto the item as a single string field
+(`geminiTextRequestBody`). The HTTP node's `body` field then does nothing more than reference
+that one field — the simplest, most common expression pattern in n8n (reference a single
+upstream value), deliberately chosen because it can't hit the same "whole-field-expression on a
+non-string-typed parameter" edge case. `Gemini: Vision Extraction` keeps its body construction
+inline (a Code node can't easily reach binary data the same way without extra risk) but still
+moved from `jsonBody`/`specifyBody:"json"` to `contentType:"raw"` + `body`, which was the actual
+fix — the `JSON.stringify(...)` wrap by itself is necessary but not sufficient.
 
-```
-={{ { "contents": [ ... ] } }}
-```
-
-`JSON.stringify` always returns a string, so the HTTP Request node's `typeof
-jsonBodyParameter !== 'object'` check always takes the "parse this string" branch — and
-`JSON.parse` on `JSON.stringify`'s own output always succeeds. This sidesteps the
-version-dependent auto-detection entirely, rather than depending on it and hoping it behaves
-the same way in whichever n8n version you're running. If you add another HTTP Request node
-whose body is built as an inline object literal, wrap it in `JSON.stringify(...)` too.
+If you add another HTTP Request node whose body is built from an expression (not typed by
+hand), prefer `contentType: "raw"` + a plain-string `body` field over `specifyBody: "json"` +
+`jsonBody`, and where practical build the body in a preceding Code node so the HTTP node's own
+field is just a one-field reference.
 
 ## `/undo` and `/edit` notes
 
