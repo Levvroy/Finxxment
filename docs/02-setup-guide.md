@@ -46,9 +46,14 @@ follow it top to bottom the first time.
    like `@userinfobot`. This is `TELEGRAM_OWNER_CHAT_ID` — the only chat id the workflows will
    respond to.
 
-8. **Get a Gemini API key.** Google AI Studio > "Get API key". This is used by an HTTP Header
-   Auth credential in n8n (header `x-goog-api-key`) or a native Gemini/PaLM credential if your
-   n8n version has one.
+8. **Get a Groq API key (text extraction) and a Gemini API key (photo/vision verification).**
+   Groq: console.groq.com > API Keys > "Create API Key" — used by an HTTP Header Auth credential
+   in n8n (header `Authorization`, value `Bearer <key>`). Gemini: Google AI Studio > "Get API
+   key" — used by an HTTP Header Auth credential (header `x-goog-api-key`) or a native
+   Gemini/PaLM credential if your n8n version has one. Text extraction was switched from Gemini
+   to Groq because Gemini's free tier can be provisioned with a `0` request quota depending on
+   the Google Cloud project/key — if that happens to you, generating a fresh key via AI Studio
+   directly (rather than through Cloud Console) usually gets the correct free-tier bucket.
 
 9. **Set up Google OAuth for n8n (Sheets + Drive).** In n8n, create credentials
    `Finxxment Google Sheets` (Google Sheets OAuth2 API) and `Finxxment Google Drive` (Google
@@ -63,13 +68,16 @@ follow it top to bottom the first time.
     into workflow 01's Execute Workflow node), then optionally `03-scheduled-report.json`,
     `04-export-xlsx-berkala.json`, and `05-daily-alerts.json`.
 
-12. **Create the 4 n8n credentials** listed in `config/env.example` with those exact names.
+12. **Create the 5 n8n credentials** listed in `config/env.example` with those exact names
+    (`Finxxment Groq API` and `Finxxment Gemini API` are separate credentials — text extraction
+    now uses Groq, vision extraction still uses Gemini).
 
 13. **Fill in every workflow's "Config" Set node**: `OWNER_CHAT_ID`, `SPREADSHEET_ID`,
     `DRIVE_PROOF_FOLDER_ID`, `WEBAPP_URL`, `WEBAPP_SECRET` (from steps 1, 4, 7, 10 above).
 
-14. **Paste the Gemini prompts.** Copy the content of `n8n/prompts/gemini-text-extraction.md`
-    and `gemini-vision-extraction.md` into the corresponding Gemini HTTP Request nodes in
-    workflow 01 (and `gemini-scheduled-insight.md` into workflow 03, if used).
+14. **Paste the prompts.** Copy the content of `n8n/prompts/gemini-text-extraction.md` into the
+    `Code: Build Groq Text Body` node in workflow 01 (it's just extraction instructions, not tied
+    to a specific provider despite the filename), `gemini-vision-extraction.md` into
+    `Gemini: Vision Extraction`, and `gemini-scheduled-insight.md` into workflow 03, if used.
 
 15. **Activate the workflows** and run through `docs/06-verification-checklist.md`.

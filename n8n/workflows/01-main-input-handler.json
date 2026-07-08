@@ -418,30 +418,30 @@
     {
       "parameters": {
         "language": "javaScript",
-        "jsCode": "const prompt = $node[\"Config\"].json.GEMINI_TEXT_PROMPT;\nconst today = $today.toISODate();\nconst userText = ($json.message && $json.message.text) ? $json.message.text : '';\nconst body = {\n  contents: [\n    { parts: [ { text: prompt + \"\\n\\nToday: \" + today + \"\\n\\nUser message: \" + userText } ] }\n  ]\n};\nreturn { json: { ...$json, geminiTextRequestBody: JSON.stringify(body) } };\n"
+        "jsCode": "const prompt = $node[\"Config\"].json.GEMINI_TEXT_PROMPT;\nconst today = $today.toISODate();\nconst userText = ($json.message && $json.message.text) ? $json.message.text : '';\nconst body = {\n  model: \"llama-3.3-70b-versatile\",\n  messages: [\n    { role: \"user\", content: prompt + \"\\n\\nToday: \" + today + \"\\n\\nUser message: \" + userText }\n  ]\n};\nreturn { json: { ...$json, groqTextRequestBody: JSON.stringify(body) } };\n"
       },
       "id": "8f1b6f2d-7b1a-4b0e-9c9a-2e6b2b6a9d31",
-      "name": "Code: Build Gemini Text Body",
+      "name": "Code: Build Groq Text Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1625,
         1000
       ],
-      "notes": "Builds the Gemini text-extraction request body as a plain JSON string field (geminiTextRequestBody) so the HTTP node's JSON Body field can just reference it (={{ $json.geminiTextRequestBody }}) instead of constructing the object inline in the HTTP node's own expression."
+      "notes": "Builds the Groq text-extraction request body (OpenAI-compatible chat-completions format) as a plain JSON string field (groqTextRequestBody) so the HTTP node's body field can just reference it (={{ $json.groqTextRequestBody }}). Same prompt text as before (GEMINI_TEXT_PROMPT Config field name kept as-is — it's just extraction instructions, not tied to a specific model provider)."
     },
     {
       "parameters": {
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
         "method": "POST",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ $json.geminiTextRequestBody }}",
+        "body": "={{ $json.groqTextRequestBody }}",
         "options": {}
       },
       "id": "33e8b68c-fad8-4e11-a3a5-9db78f169cd2",
-      "name": "Gemini: Text Extraction",
+      "name": "Groq: Text Extraction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
@@ -451,15 +451,15 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "PLACEHOLDER",
-          "name": "Finxxment Gemini API"
+          "name": "Finxxment Groq API"
         }
       },
-      "notes": "Prompt text sourced from n8n/prompts/gemini-text-extraction.md — paste its content into a Config field (e.g. GEMINI_TEXT_PROMPT) or directly into this node. Keep in sync manually if edited."
+      "notes": "Switched from Gemini to Groq (llama-3.3-70b-versatile) because Gemini free-tier quota was 0 for this project. Auth via HTTP Header Auth credential 'Finxxment Groq API' (header name 'Authorization', value 'Bearer <your Groq key>'). Prompt text sourced from n8n/prompts/gemini-text-extraction.md — paste its content into a Config field (e.g. GEMINI_TEXT_PROMPT) or directly into the preceding Code node. Keep in sync manually if edited."
     },
     {
       "parameters": {
         "language": "javaScript",
-        "jsCode": "// Parses Gemini's JSON array response, strips markdown fences if present,\n// and applies a fallback shorthand-nominal normalizer (50rb/50k/1jt) in case\n// the model missed it. Returns one n8n item per transaction so downstream\n// nodes naturally iterate over multi-transaction messages.\nfunction normalizeNominal(raw) {\n  if (typeof raw === 'number') return raw;\n  if (!raw) return 0;\n  const s = String(raw).toLowerCase().replace(/[^0-9a-z.,]/g, '');\n  const m = s.match(/([0-9.,]+)(rb|ribu|k|jt|juta)?/);\n  if (!m) return 0;\n  let num = parseFloat(m[1].replace(',', '.'));\n  if (m[2] === 'rb' || m[2] === 'ribu' || m[2] === 'k') num *= 1000;\n  if (m[2] === 'jt' || m[2] === 'juta') num *= 1000000;\n  return Math.round(num);\n}\n\nconst raw = $input.first().json;\nlet text = raw.candidates ? raw.candidates[0].content.parts[0].text : JSON.stringify(raw);\ntext = text.replace(/```json|```/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  return [{ json: { geminiError: true, rawText: $('IF Has Photo').first().json.message.text } }];\n}\nif (!Array.isArray(parsed)) parsed = [parsed];\nreturn parsed.map(tx => ({ json: { ...tx, nominal: normalizeNominal(tx.nominal), chatId: $('IF Has Photo').first().json.message.chat.id, hasPhoto: !!($('IF Has Photo').first().json.message.photo) } }));\n"
+        "jsCode": "// Parses Groq's OpenAI-compatible chat-completions response (choices[0].message.content),\n// strips markdown fences if present, and applies a fallback shorthand-nominal normalizer\n// (50rb/50k/1jt) in case the model missed it. Returns one n8n item per transaction so\n// downstream nodes naturally iterate over multi-transaction messages.\nfunction normalizeNominal(raw) {\n  if (typeof raw === 'number') return raw;\n  if (!raw) return 0;\n  const s = String(raw).toLowerCase().replace(/[^0-9a-z.,]/g, '');\n  const m = s.match(/([0-9.,]+)(rb|ribu|k|jt|juta)?/);\n  if (!m) return 0;\n  let num = parseFloat(m[1].replace(',', '.'));\n  if (m[2] === 'rb' || m[2] === 'ribu' || m[2] === 'k') num *= 1000;\n  if (m[2] === 'jt' || m[2] === 'juta') num *= 1000000;\n  return Math.round(num);\n}\n\nconst raw = $input.first().json;\nlet text = (raw.choices && raw.choices[0] && raw.choices[0].message) ? raw.choices[0].message.content : JSON.stringify(raw);\ntext = text.replace(/```json|```/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  return [{ json: { geminiError: true, rawText: $('IF Has Photo').first().json.message.text } }];\n}\nif (!Array.isArray(parsed)) parsed = [parsed];\nreturn parsed.map(tx => ({ json: { ...tx, nominal: normalizeNominal(tx.nominal), chatId: $('IF Has Photo').first().json.message.chat.id, hasPhoto: !!($('IF Has Photo').first().json.message.photo) } }));\n"
       },
       "id": "dd585da6-1297-42b3-91cd-d8a4376f9d1d",
       "name": "Code: Parse & Normalize",
@@ -469,7 +469,7 @@
         2000,
         1000
       ],
-      "notes": "Sets geminiError:true on parse failure so the fallback branch below can catch it and never lose the raw message."
+      "notes": "Sets geminiError:true on parse failure so the fallback branch below can catch it and never lose the raw message. Field name kept as geminiError for backward compat with the IF Gemini Error node below — it just means \"text-extraction API error\", now Groq instead of Gemini."
     },
     {
       "parameters": {
@@ -2175,32 +2175,32 @@
       "main": [
         [
           {
-            "node": "Code: Build Gemini Text Body",
+            "node": "Code: Build Groq Text Body",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Code: Build Gemini Text Body",
+            "node": "Code: Build Groq Text Body",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code: Build Gemini Text Body": {
+    "Code: Build Groq Text Body": {
       "main": [
         [
           {
-            "node": "Gemini: Text Extraction",
+            "node": "Groq: Text Extraction",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Gemini: Text Extraction": {
+    "Groq: Text Extraction": {
       "main": [
         [
           {
