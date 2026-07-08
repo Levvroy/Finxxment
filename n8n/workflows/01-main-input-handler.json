@@ -417,11 +417,27 @@
     },
     {
       "parameters": {
+        "language": "javaScript",
+        "jsCode": "const prompt = $node[\"Config\"].json.GEMINI_TEXT_PROMPT;\nconst today = $today.toISODate();\nconst userText = ($json.message && $json.message.text) ? $json.message.text : '';\nconst body = {\n  contents: [\n    { parts: [ { text: prompt + \"\\n\\nToday: \" + today + \"\\n\\nUser message: \" + userText } ] }\n  ]\n};\nreturn { json: { ...$json, geminiTextRequestBody: JSON.stringify(body) } };\n"
+      },
+      "id": "8f1b6f2d-7b1a-4b0e-9c9a-2e6b2b6a9d31",
+      "name": "Code: Build Gemini Text Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1625,
+        1000
+      ],
+      "notes": "Builds the Gemini text-extraction request body as a plain JSON string field (geminiTextRequestBody) so the HTTP node's JSON Body field can just reference it (={{ $json.geminiTextRequestBody }}) instead of constructing the object inline in the HTTP node's own expression."
+    },
+    {
+      "parameters": {
         "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
         "method": "POST",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_TEXT_PROMPT + \"\\n\\nToday: \" + $today + \"\\n\\nUser message: \" + $json.message.text } ] } ] }) }}",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.geminiTextRequestBody }}",
         "options": {}
       },
       "id": "33e8b68c-fad8-4e11-a3a5-9db78f169cd2",
@@ -695,8 +711,9 @@
         "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
         "method": "POST",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_VISION_PROMPT }, { \"inline_data\": { \"mime_type\": \"image/jpeg\", \"data\": $binary.data.toString('base64') } } ] } ] }) }}",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_VISION_PROMPT }, { \"inline_data\": { \"mime_type\": \"image/jpeg\", \"data\": $binary.data.toString('base64') } } ] } ] }) }}",
         "options": {}
       },
       "id": "fc669912-d9df-40b4-8ef1-9beec53df2cb",
@@ -2158,11 +2175,22 @@
       "main": [
         [
           {
-            "node": "Gemini: Text Extraction",
+            "node": "Code: Build Gemini Text Body",
             "type": "main",
             "index": 0
           }
         ],
+        [
+          {
+            "node": "Code: Build Gemini Text Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Build Gemini Text Body": {
+      "main": [
         [
           {
             "node": "Gemini: Text Extraction",
