@@ -459,7 +459,7 @@
     {
       "parameters": {
         "language": "javaScript",
-        "jsCode": "// Parses Groq's OpenAI-compatible chat-completions response (choices[0].message.content),\n// strips markdown fences if present, and applies a fallback shorthand-nominal normalizer\n// (50rb/50k/1jt) in case the model missed it. Returns one n8n item per transaction so\n// downstream nodes naturally iterate over multi-transaction messages.\nfunction normalizeNominal(raw) {\n  if (typeof raw === 'number') return raw;\n  if (!raw) return 0;\n  const s = String(raw).toLowerCase().replace(/[^0-9a-z.,]/g, '');\n  const m = s.match(/([0-9.,]+)(rb|ribu|k|jt|juta)?/);\n  if (!m) return 0;\n  let num = parseFloat(m[1].replace(',', '.'));\n  if (m[2] === 'rb' || m[2] === 'ribu' || m[2] === 'k') num *= 1000;\n  if (m[2] === 'jt' || m[2] === 'juta') num *= 1000000;\n  return Math.round(num);\n}\n\nconst raw = $input.first().json;\nlet text = (raw.choices && raw.choices[0] && raw.choices[0].message) ? raw.choices[0].message.content : JSON.stringify(raw);\ntext = text.replace(/```json|```/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  return [{ json: { geminiError: true, rawText: $('IF Has Photo').first().json.message.text } }];\n}\nif (!Array.isArray(parsed)) parsed = [parsed];\nreturn parsed.map(tx => ({ json: { ...tx, nominal: normalizeNominal(tx.nominal), chatId: $('IF Has Photo').first().json.message.chat.id, hasPhoto: !!($('IF Has Photo').first().json.message.photo) } }));\n"
+        "jsCode": "// Parses Groq's OpenAI-compatible chat-completions response (choices[0].message.content),\n// strips markdown fences if present, and applies a fallback shorthand-nominal normalizer\n// (50rb/50k/1jt) in case the model missed it. Returns one n8n item per transaction so\n// downstream nodes naturally iterate over multi-transaction messages.\n//\n// Uses $('Telegram Trigger') instead of $('IF Has Photo') to reach the original message:\n// $('NodeName').first() defaults to reading OUTPUT BRANCH 0 of the referenced node whenever\n// the referenced node isn't the *direct* parent of the current node (n8n can only auto-detect\n// the right branch for direct connections). 'IF Has Photo' has 2 outputs (true/false), and this\n// node isn't its direct child, so .first() silently read branch 0 (the 'has photo' branch) even\n// for plain-text messages, which is empty -> undefined -> 'Cannot read properties of undefined\n// (reading 'json')'. 'Telegram Trigger' only ever has 1 output and 1 item per execution, so\n// referencing it instead is unambiguous regardless of how many hops/branches lie in between.\nfunction normalizeNominal(raw) {\n  if (typeof raw === 'number') return raw;\n  if (!raw) return 0;\n  const s = String(raw).toLowerCase().replace(/[^0-9a-z.,]/g, '');\n  const m = s.match(/([0-9.,]+)(rb|ribu|k|jt|juta)?/);\n  if (!m) return 0;\n  let num = parseFloat(m[1].replace(',', '.'));\n  if (m[2] === 'rb' || m[2] === 'ribu' || m[2] === 'k') num *= 1000;\n  if (m[2] === 'jt' || m[2] === 'juta') num *= 1000000;\n  return Math.round(num);\n}\n\nconst raw = $input.first().json;\nlet text = (raw.choices && raw.choices[0] && raw.choices[0].message) ? raw.choices[0].message.content : JSON.stringify(raw);\ntext = text.replace(/```json|```/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (e) {\n  return [{ json: { geminiError: true, rawText: $('Telegram Trigger').first().json.message.text } }];\n}\nif (!Array.isArray(parsed)) parsed = [parsed];\nreturn parsed.map(tx => ({ json: { ...tx, nominal: normalizeNominal(tx.nominal), chatId: $('Telegram Trigger').first().json.message.chat.id, hasPhoto: !!($('Telegram Trigger').first().json.message.photo) } }));\n"
       },
       "id": "dd585da6-1297-42b3-91cd-d8a4376f9d1d",
       "name": "Code: Parse & Normalize",
@@ -689,7 +689,7 @@
     {
       "parameters": {
         "resource": "file",
-        "fileId": "={{$('Switch: Route Message').first().json.message.photo.last().file_id}}"
+        "fileId": "={{$('Telegram Trigger').first().json.message.photo.last().file_id}}"
       },
       "id": "41cbf098-d5a2-4004-bc32-6a59f14d8ed9",
       "name": "Telegram: Get File",
@@ -704,7 +704,8 @@
           "id": "PLACEHOLDER",
           "name": "Finxxment Telegram Bot"
         }
-      }
+      },
+      "notes": "References $('Telegram Trigger') rather than $('Switch: Route Message') to get message.photo: only the 'transaksi' fallback branch of Switch: Route Message ever reaches this node, but $('NodeName').first() defaults to output branch 0 for non-direct-parent references, which is a different (empty) branch here - would throw/return undefined the moment a photo message actually reached this node. Telegram Trigger has exactly 1 output and 1 item per execution, so it's unambiguous."
     },
     {
       "parameters": {
