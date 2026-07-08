@@ -85,6 +85,37 @@ earlier version of `01-main-input-handler.json` and was only caught by checking 
 fallback output can be wired correctly and still never fire if this option is misplaced). If
 you add another Switch node with a fallback output, double-check this placement.
 
+## HTTP Request `jsonBody` gotcha: don't rely on the bare `{{ {...} }}` object-literal shortcut
+
+`Gemini: Text Extraction` and `Gemini: Vision Extraction` build their request body with a
+single whole-field expression. n8n's HTTP Request node has a documented shortcut: if a
+JSON-mode body field's *entire* value is one `{{ ... }}` expression, and that expression
+evaluates to a JS object, n8n is supposed to use the object directly instead of requiring a
+JSON string. That auto-detection has proven fragile across n8n versions — on n8n Cloud
+2.28.7 it resolved to the literal string `"undefined"`, which then failed with `The value in
+the "JSON Body" field is not valid JSON` / `"undefined" is not valid JSON"`, even though the
+node imported and looked correctly configured.
+
+The fix is to stop depending on that shortcut and force the field to always resolve to a
+plain string containing valid JSON, by wrapping the object literal in `JSON.stringify(...)`:
+
+```
+={{ JSON.stringify({ "contents": [ ... ] }) }}
+```
+
+instead of:
+
+```
+={{ { "contents": [ ... ] } }}
+```
+
+`JSON.stringify` always returns a string, so the HTTP Request node's `typeof
+jsonBodyParameter !== 'object'` check always takes the "parse this string" branch — and
+`JSON.parse` on `JSON.stringify`'s own output always succeeds. This sidesteps the
+version-dependent auto-detection entirely, rather than depending on it and hoping it behaves
+the same way in whichever n8n version you're running. If you add another HTTP Request node
+whose body is built as an inline object literal, wrap it in `JSON.stringify(...)` too.
+
 ## `/undo` and `/edit` notes
 
 - `/undo`'s "Sheets: Find Last Row" node reads the whole `Transaksi` sheet; pick the last item

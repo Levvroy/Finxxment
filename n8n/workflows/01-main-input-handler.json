@@ -421,7 +421,7 @@
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_TEXT_PROMPT + \"\\n\\nToday: \" + $today + \"\\n\\nUser message: \" + $json.message.text } ] } ] } }}",
+        "jsonBody": "={{ JSON.stringify({ \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_TEXT_PROMPT + \"\\n\\nToday: \" + $today + \"\\n\\nUser message: \" + $json.message.text } ] } ] }) }}",
         "options": {}
       },
       "id": "33e8b68c-fad8-4e11-a3a5-9db78f169cd2",
@@ -696,7 +696,7 @@
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_VISION_PROMPT }, { \"inline_data\": { \"mime_type\": \"image/jpeg\", \"data\": $binary.data.toString('base64') } } ] } ] } }}",
+        "jsonBody": "={{ JSON.stringify({ \"contents\": [ { \"parts\": [ { \"text\": $node[\"Config\"].json.GEMINI_VISION_PROMPT }, { \"inline_data\": { \"mime_type\": \"image/jpeg\", \"data\": $binary.data.toString('base64') } } ] } ] }) }}",
         "options": {}
       },
       "id": "fc669912-d9df-40b4-8ef1-9beec53df2cb",
